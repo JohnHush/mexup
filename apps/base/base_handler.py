@@ -1,8 +1,10 @@
 from abc import ABC
 
 import tornado.web
+#
+# from apps.quantization.soccer import SoccerOdds
 
-from apps.quantization.soccer import SoccerOdds
+from apps.quantization.match_odds import cal_match_odds
 
 #
 # import logging
@@ -13,8 +15,6 @@ from apps.quantization.soccer import SoccerOdds
 class NoResultError(Exception):
     pass
 
-#todo 待优化
-soccerIntance = None
 
 class BaseHandler(tornado.web.RequestHandler, ABC):
 
@@ -25,25 +25,65 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
         else:
             return "{}-{}-{}-{}-{}-{}-{}".format(mu[0],mu[1],score[0],score[1],adjModel,adjPara0,adjPara1)
 
+    def getMatchOdds(self):
 
-    def getSoccerOdds(self):
-        global soccerIntance
 
-        if not soccerIntance == None:
-            return soccerIntance
+        mu = [float(self.get_argument("supremacy")), float(self.get_argument("totalGoals"))]
 
-        mu = [float(self.get_argument("mu0")), float(self.get_argument("mu1"))]
-        score = [int(self.get_argument("score0")), int(self.get_argument("score1"))]
-        adjModel = int(self.get_argument("adjModel"))
-        adjPara0 = float(self.get_argument("adjPara0"))
+        #cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
 
+        score = [ [int(self.get_argument("half_time_score_home")), int(self.get_argument("half_time_score_away"))],
+                 [int(self.get_argument("full_time_score_home")), int(self.get_argument("full_time_score_away"))] ]
+
+        clock = [ int(self.get_argument("stage")), int(self.get_argument("running_time")),
+                  int(self.get_argument("ht_add")), int(self.get_argument("ft_ad")) ]
+
+        decay = [float(self.get_argument("decay_home")), float(self.get_argument("decay_away"))]
+
+        adjModel = int(self.get_argument("adj_mode"))
+
+        parameter = None
         if adjModel == 1:
-            soccerIntance = SoccerOdds(mu, score, [adjModel, adjPara0])
+            parameter = [adjModel,float(self.get_argument("rho"))];
         else:
-            adjPara1 = float(self.get_argument("adjPara1"))
-            soccerIntance = SoccerOdds(mu, score, [adjModel, [adjPara0, adjPara1]])
+            parameter = [adjModel, [float(self.get_argument("draw_adj")), float(self.get_argument("draw_split"))]]
 
-        return soccerIntance;
+
+
+        #
+        # match=cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
+        #
+        # print(match.full_time())
+        # mu_home 主队期望进球数; mu_away 客队期望进球数; home_score 主队当前进球数; away_score 客队当前进球数;
+        # adj_mode 赔率调整模式，0-平局调整模式，1-rho调整模式; adj_parameter, 平局调整模式[draw_adj, draw_split]，rho模式
+
+        # mu: [supremacy, total goals]
+        # score=[half_time_score,full_time_score]
+        # decay=[decay_home, decay_away]
+        # parameter=[adj_mode, rho]或者[adj_mode,[draw_adj, draw_split]]
+        # clock=[stage, running_time, ht_add, ft_ad]
+
+        return cal_match_odds(mu,score, clock, decay, parameter)
+
+
+    # def getSoccerOdds(self):
+    #     global soccerIntance
+    #
+    #     if not soccerIntance == None:
+    #         return soccerIntance
+    #
+    #     mu = [float(self.get_argument("mu0")), float(self.get_argument("mu1"))]
+    #     score = [int(self.get_argument("score0")), int(self.get_argument("score1"))]
+    #     adjModel = int(self.get_argument("adjModel"))
+    #     adjPara0 = float(self.get_argument("adjPara0"))
+    #
+    #     if adjModel == 1:
+    #         soccerIntance = SoccerOdds(mu, score, [adjModel, adjPara0])
+    #     else:
+    #         adjPara1 = float(self.get_argument("adjPara1"))
+    #         soccerIntance = SoccerOdds(mu, score, [adjModel, [adjPara0, adjPara1]])
+    #
+    #     return soccerIntance;
 
 
     #
