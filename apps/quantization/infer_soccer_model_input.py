@@ -82,7 +82,7 @@ class infer_soccer_model_input(object):
 
     def asian_handicap_cost_function(self, x, exp_total_goals_middle):
         self.odds_tool.set_value([x, exp_total_goals_middle], self.score, self.parameter)
-        return [self.odds_tool.asian_handicap(self.asian_handicap_line)['home']-self.home_market_100_margin]
+        return self.odds_tool.asian_handicap(self.asian_handicap_line)['home']-self.home_market_100_margin
 
 
 # rho = -0.08

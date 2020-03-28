@@ -1,8 +1,15 @@
+import json
 from abc import ABC
 #
 # import tornado
 # from apps.quantization.match_odds import cal_match_odds
 from apps.base.base_handler import BaseHandler
+
+class InferSoccerMuHandler(BaseHandler, ABC):
+    def get(self):
+        inferSoccer = self.getInferSoccer();
+        self.write( json.dumps((inferSoccer.infer_supremacy_total_goals())) )
+
 
 class ScocorFullTimeHandicapHandler(BaseHandler, ABC) :
 
@@ -10,7 +17,7 @@ class ScocorFullTimeHandicapHandler(BaseHandler, ABC) :
 
         matchOdds = self.getMatchOdds();
 
-        self.write((matchOdds.full_time()))
+        self.write( (matchOdds.full_time()) )
 
 #
 # class HadHandler(BaseHandler, ABC) :

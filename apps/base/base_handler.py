@@ -5,6 +5,7 @@ import tornado.web
 # from apps.quantization.soccer import SoccerOdds
 
 from apps.quantization.match_odds import cal_match_odds
+from apps.quantization.infer_soccer_model_input import infer_soccer_model_input
 
 #
 # import logging
@@ -25,7 +26,35 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
         else:
             return "{}-{}-{}-{}-{}-{}-{}".format(mu[0],mu[1],score[0],score[1],adjModel,adjPara0,adjPara1)
 
+    def getInferSoccer(self):
+        # 反查模型参数
+        query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
+        asian_handicap_market = [float(self.get_argument("ahc_line")), float(self.get_argument("ahc_home_odds")),
+                                 float(self.get_argument("ahc_away_odds"))]
+        over_under_market = [float(self.get_argument("ou_line")), float(self.get_argument("ou_home_odds")),
+                             float(self.get_argument("ou_away_odds"))]
+        eps = float(self.get_argument("eps"))
+        adjModel = int(self.get_argument("adj_mode"))
+
+        parameter = None
+        if adjModel == 1:
+            parameter = [adjModel, float(self.get_argument("rho"))];
+        else:
+            parameter = [adjModel, [float(self.get_argument("draw_adj")), float(self.get_argument("draw_split"))]]
+
+        cal = infer_soccer_model_input();
+        cal.set_value(query_score, asian_handicap_market, over_under_market, 16, parameter, eps)
+
+        return cal;
+
     def getMatchOdds(self):
+
+        #反查模型 获取 mu
+        #score, asian_handicap_market, over_under_market, max_total_goals, parameter, eps
+        # para_input = cal_soccer_model_input()
+        # para_input.set_value(score, asian_handicap_market, over_under_market, max_total_goals, parameter, eps)
+        #
+        # print(para_input.infer_supremacy_total_goals())
 
 
         mu = [float(self.get_argument("supremacy")), float(self.get_argument("totalGoals"))]
@@ -47,6 +76,16 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
             parameter = [adjModel,float(self.get_argument("rho"))];
         else:
             parameter = [adjModel, [float(self.get_argument("draw_adj")), float(self.get_argument("draw_split"))]]
+
+
+
+        # para_input = cal_soccer_model_input()
+        # para_input.set_value(score, asian_handicap_market, over_under_market, max_total_goals, parameter, eps)
+        #
+        # print(para_input.infer_supremacy_total_goals())
+
+
+
 
 
 
