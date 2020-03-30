@@ -102,7 +102,7 @@ class infer_soccer_model_input(object):
 # over_under_market = [3.5, 1.9, 1.78]
 # asian_handicap_market = [0.5, 2.1, 1.8]
 #
-# para_input = cal_soccer_model_input()
+# para_input = infer_soccer_model_input()
 # para_input.set_value(score, asian_handicap_market, over_under_market, max_total_goals, parameter, eps)
 #
 # print(para_input.infer_supremacy_total_goals())
