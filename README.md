@@ -18,13 +18,15 @@ python server.py
 ├─apps                            # app应用文件
 │  ├─base                         # 处理基类
 │  └─restful                      # 具体应用，resful为应用名
-│         soccor_handler.py       # 处理逻辑，C控制层
+│         soccer_handler.py       # 处理逻辑，C控制层
 │         urls.py                 # 路由映射
 ├─configs                         # 项目配置
 │         log_config.py           # log配置
 ├─docs                            # 项目文档/说明
 ├─quantization                    # 模型层 负责算法模型
-│         soccer.py               #足球模型
+│         soccer_poisson.py       #足球模型
+│         match_odds.py           #足球所有比赛赔率
+│         infer_soccer_model_input.py   #足球反查模型
 ├─logs                            # 日志文件存放
 ├─media                           # 一些媒体资源
 ├─templates                       # 模板，放html页面

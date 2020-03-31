@@ -85,7 +85,7 @@ class InferSoccerSupremacyHandler(BaseHandler, ABC):
 #         self.write( json.dumps((inferSoccer.infer_supremacy_total_goals())) )
 
 
-class ScocorFullTimeHandicapHandler(BaseHandler, ABC) :
+class SoccerFullTimeHandicapHandler(BaseHandler, ABC) :
 
     def get(self):
 
