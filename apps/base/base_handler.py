@@ -34,7 +34,7 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
 
     def getMatchOdds(self):
 
-        mu = [float(self.get_argument("supremacy")), float(self.get_argument("totalGoals"))]
+        mu = [float(self.get_argument("supremacy")), float(self.get_argument("total_goals"))]
 
         #cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
 

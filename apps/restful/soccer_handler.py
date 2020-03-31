@@ -11,7 +11,7 @@ class InferSoccerTotalGoalsHandler(BaseHandler, ABC):
         inferSoccer = self.getInferSoccer();
         self.setValue(inferSoccer)
 
-        self.write(json.dumps(inferSoccer.infer_total_goals()))
+        self.write({"code":0,"data":inferSoccer.infer_total_goals()})
 
     def setValue(self,inferSoccer):
 
@@ -44,8 +44,7 @@ class InferSoccerSupremacyHandler(BaseHandler, ABC):
     def get(self):
         inferSoccer = self.getInferSoccer();
         self.setValue(inferSoccer)
-
-        self.write( json.dumps( (inferSoccer.infer_supremacy()) ) )
+        self.write( {"code":0,"data":inferSoccer.infer_supremacy()} )
 
     def setValue(self,inferSoccer):
 
@@ -86,12 +85,9 @@ class InferSoccerSupremacyHandler(BaseHandler, ABC):
 
 
 class SoccerFullTimeHandicapHandler(BaseHandler, ABC) :
-
     def get(self):
-
         matchOdds = self.getMatchOdds();
-
-        self.write( (matchOdds.full_time()) )
+        self.write( {"code":0,"data":matchOdds.full_time()} )
 
 #
 # class HadHandler(BaseHandler, ABC) :
