@@ -162,7 +162,7 @@ class cal_match_odds(object):
         full_time_odds[market_type.SOCCER_ODD_EVEN_GOALS] = self.odds_tool_full_time.odd_even()
 
         #输出半全场玩法赔率
-        odds[period.SOCCER_FIRST_HALF]= full_time_odds
+        odds[period.SOCCER_FULL_TIME]= full_time_odds
 
     #输出上半场玩法赔率
         first_half_odds = {}

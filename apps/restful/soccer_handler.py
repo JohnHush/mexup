@@ -87,7 +87,7 @@ class InferSoccerSupremacyHandler(BaseHandler, ABC):
 class SoccerFullTimeHandicapHandler(BaseHandler, ABC) :
     def get(self):
         matchOdds = self.getMatchOdds();
-        self.write( {"code":0,"data":matchOdds.full_time()} )
+        self.write( {"code":0,"data":matchOdds.odds_output()} )
 
 #
 # class HadHandler(BaseHandler, ABC) :
