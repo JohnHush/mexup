@@ -288,7 +288,7 @@ class cal_soccer_odds(object):
     
 #双方球队都进球
     def both_scored(self):
-        yes_prob=self.home_over_under(0.5)['over']*self.away_over_under(0.5)['over']
+        yes_prob=self.home_over_under(0.5)['OVER']*self.away_over_under(0.5)['OVER']
         no_prob=1-yes_prob
         return {'YES': round(yes_prob,5), 'NO': round(no_prob,5)}
 
