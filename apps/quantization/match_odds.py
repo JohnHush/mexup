@@ -160,9 +160,9 @@ class cal_match_odds(object):
         #输出半全场玩法赔率
 
         return dic
+# #
+# match=cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
 #
-match=cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
-
-print(match.full_time())
+# print(match.full_time())
 
 
