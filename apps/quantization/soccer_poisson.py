@@ -191,7 +191,7 @@ class cal_soccer_odds(object):
         draw_plus_away_over,draw_plus_away_under=self.cal_over_under(draw_plus_away_prob_matrix,line)
         return {'home_draw_over': round(home_plus_draw_over,5),'home_draw_under': round(home_plus_draw_under,5),'home_away_over': round(home_plus_away_over,5),'home_away_under': round(home_plus_away_under,5),'draw_away_over': round(draw_plus_away_over,5),'draw_away_under': round(draw_plus_away_under,5)}
 
-#准确进球数    
+#准确进球数
     def exact_totals(self,target_goals):
         prob_matrix_total_goals=self.flip90_left(self.prob_matrix)
         rows=prob_matrix_total_goals.shape[0]
@@ -200,7 +200,7 @@ class cal_soccer_odds(object):
         target_goals_prob=np.diag(prob_matrix_total_goals,slice_line).sum()
         return round(target_goals_prob,5)  
 
-#主队进球数over under    
+#主队进球数over under
     def home_over_under(self,line):
 
         net_line=line-self.home_score
@@ -231,7 +231,7 @@ class cal_soccer_odds(object):
             under_prob=0
         return {'OVER': round(over_prob,5),'UNDER': round(under_prob,5)}
 
-#客队进球数over under    
+#客队进球数over under
     def away_over_under(self,line):
 
         net_line=line-self.away_score
@@ -288,7 +288,7 @@ class cal_soccer_odds(object):
     
 #双方球队都进球
     def both_scored(self):
-        yes_prob=self.home_over_under(0.5)['OVER']*self.away_over_under(0.5)['OVER']
+        yes_prob=self.home_over_under(0.5)['OVER']*self.away_over_under(0.5)['UNDER']
         no_prob=1-yes_prob
         return {'YES': round(yes_prob,5), 'NO': round(no_prob,5)}
 
