@@ -44,7 +44,7 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
         clock = [ int(self.get_argument("stage")), int(self.get_argument("running_time")),
                   int(self.get_argument("ht_add")), int(self.get_argument("ft_ad")) ]
 
-        decay = [float(self.get_argument("decay_home")), float(self.get_argument("decay_away"))]
+        decay = float(self.get_argument("decay"))
 
         adjModel = int(self.get_argument("adj_mode"))
 
