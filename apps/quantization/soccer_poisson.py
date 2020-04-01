@@ -51,11 +51,10 @@ class cal_soccer_odds(object):
             
         elif self.adj_mode==1:
             self.rho=parameter[1]
-            if self.rho>=max(-1/self.mu_home,-1/self.mu_away) and self.rho<=min(1/self.mu_home/self.mu_away,1):
-                self.prob_matrix[0,0]=self.prob_matrix[0,0]*(1-self.mu_home*self.mu_away*self.rho)
-                self.prob_matrix[0,1]=self.prob_matrix[0,1]*(1+self.mu_home*self.rho)
-                self.prob_matrix[1,0]=self.prob_matrix[1,0]*(1+self.mu_away*self.rho)
-                self.prob_matrix[1,1]=self.prob_matrix[1,1]*(1-self.rho)
+            self.prob_matrix[0,0]=self.prob_matrix[0,0]*(1-self.mu_home*self.mu_away*self.rho)
+            self.prob_matrix[0,1]=self.prob_matrix[0,1]*(1+self.mu_home*self.rho)
+            self.prob_matrix[1,0]=self.prob_matrix[1,0]*(1+self.mu_away*self.rho)
+            self.prob_matrix[1,1]=self.prob_matrix[1,1]*(1-self.rho)
             
 
         #计算主队进球数概率的向量
