@@ -6,6 +6,7 @@
 import numpy as np
 # import pandas as pd
 from scipy.stats import poisson
+from apps.quantization.constans import selection_type
 import math
 
 
@@ -67,7 +68,7 @@ class cal_soccer_odds(object):
         home_prob=np.tril(self.prob_matrix,-1+self.goal_diff).sum()
         draw_prob=np.diag(self.prob_matrix,self.goal_diff).sum()
         away_prob=np.triu(self.prob_matrix,1+self.goal_diff).sum()
-        return {'HOME': round(home_prob,5), 'DRAW': round(draw_prob,5), 'AWAY': round(away_prob,5)}
+        return {selection_type.HOME: round(home_prob,5), selection_type.DRAW: round(draw_prob,5), selection_type.AWAY: round(away_prob,5)}
 
 #输出double change 玩法
     def double_chance(self):
@@ -78,7 +79,7 @@ class cal_soccer_odds(object):
         home_plus_draw_prob=home_prob+draw_prob
         home_plus_away_prob=home_prob+away_prob
         draw_plus_away=draw_prob+away_prob
-        return {'HOME_OR_DRAW': round(home_plus_draw_prob,5),'HOME_OR_AWAY':round(home_plus_away_prob,5),'AWAY_OR_DRAW':round(draw_plus_away,5)}
+        return {selection_type.HOME_OR_DRAW: round(home_plus_draw_prob,5),selection_type.HOME_OR_AWAY:round(home_plus_away_prob,5),selection_type.AWAY_OR_DRAW:round(draw_plus_away,5)}
     
     
 #输出 指定亚盘让球线的概率
@@ -110,7 +111,7 @@ class cal_soccer_odds(object):
             away_prob_1=np.triu(self.prob_matrix,2+slice_line).sum()
             home_prob=home_prob_1/(home_prob_1+away_prob_1)
             away_prob=away_prob_1/(home_prob_1+away_prob_1)
-        return {'HOME': round(home_prob, 5), 'AWAY': round(away_prob, 5)}
+        return {selection_type.HOME: round(home_prob, 5), selection_type.AWAY: round(away_prob, 5)}
     
 #矩阵90度向左翻转
     def flip90_left(self,arr):
@@ -151,13 +152,13 @@ class cal_soccer_odds(object):
 #             print("please in put valid line!")
             over_prob=0
             under_prob=0
-        return {'OVER': round(over_prob,5), 'UNDER': round(under_prob,5)}
+        return {selection_type.OVER: round(over_prob,5), selection_type.UNDER: round(under_prob,5)}
     
 #输出正确比分概率
     def correct_score(self,home_target_score,away_target_score):
         home_score_gap=home_target_score-self.home_score
         away_score_gap=away_target_score-self.away_score
-        return round(self.prob_matrix[home_score_gap,away_score_gap],5)
+        return {selection_type.YES: (self.prob_matrix[home_score_gap,away_score_gap],5)}
 
     #double change over under 用到的大小球计算公式，只有.5 的line
     def cal_over_under(self,prob_matrix_input,line):
@@ -198,7 +199,7 @@ class cal_soccer_odds(object):
         net_target_goals=target_goals-self.goal_sum
         slice_line=net_target_goals-rows+1
         target_goals_prob=np.diag(prob_matrix_total_goals,slice_line).sum()
-        return round(target_goals_prob,5)  
+        return {selection_type.YES: (target_goals_prob,5)}
 
 #主队进球数over under
     def home_over_under(self,line):
@@ -229,7 +230,7 @@ class cal_soccer_odds(object):
         else:
             over_prob=0
             under_prob=0
-        return {'OVER': round(over_prob,5),'UNDER': round(under_prob,5)}
+        return {selection_type.OVER: round(over_prob,5),selection_type.UNDER: round(under_prob,5)}
 
 #客队进球数over under
     def away_over_under(self,line):
@@ -260,37 +261,37 @@ class cal_soccer_odds(object):
         else:
             over_prob=0
             under_prob=0
-        return {'OVER': round(over_prob,5), 'UNDER': round(under_prob,5)}
+        return {selection_type.OVER: round(over_prob,5), selection_type.UNDER: round(under_prob,5)}
 
 #主队准确进球数
     def home_exact_totals(self,home_target_goals):
         net_home_target_goals=home_target_goals-self.home_score
         home_target_goals_prob=self.home_prob_vector[net_home_target_goals]
-        return {'YES': round(home_target_goals_prob,5)}
+        return {selection_type.YES: round(home_target_goals_prob,5)}
     
 #客队准确进球数
     def away_exact_totals(self,away_target_goals):
         net_away_target_goals=away_target_goals-self.away_score
         away_target_goals_prob=self.away_prob_vector[net_away_target_goals]
-        return {'YES': round(away_target_goals_prob,5)}
+        return {selection_type.YES: round(away_target_goals_prob,5)}
     
 #主队净胜n球胜出
     def home_winning_by(self,target_winning_by):
         net_target_winning_by=target_winning_by-self.goal_diff
         home_winning_by_prob=np.diag(self.prob_matrix,-net_target_winning_by).sum()
-        return {'YES': round(home_winning_by_prob,5)}
+        return {selection_type.YES: round(home_winning_by_prob,5)}
     
 #客队净胜n球胜出
     def away_winning_by(self,target_winning_by):
         net_target_winning_by=target_winning_by+self.goal_diff
         away_winning_by_prob=np.diag(self.prob_matrix,net_target_winning_by).sum()
-        return {'YES': round(away_winning_by_prob,5)}
+        return {selection_type.YES: round(away_winning_by_prob,5)}
     
 #双方球队都进球
     def both_scored(self):
         yes_prob=self.home_over_under(0.5)['OVER']*self.away_over_under(0.5)['UNDER']
         no_prob=1-yes_prob
-        return {'YES': round(yes_prob,5), 'NO': round(no_prob,5)}
+        return {selection_type.YES: round(yes_prob,5), selection_type.NO: round(no_prob,5)}
 
 #odd even玩法
     def odd_even(self):
@@ -303,15 +304,15 @@ class cal_soccer_odds(object):
                     even_prob+=self.prob_matrix[i,j]
                 elif (i+j+self.goal_sum)%2==1:
                     odd_prob+=self.prob_matrix[i,j]
-        return {'ODD': round(odd_prob,5),'EVEN': round(even_prob,5)}
+        return {selection_type.ODD: round(odd_prob,5),selection_type.EVEN: round(even_prob,5)}
 
 
 
-#input home exp goals, away expt goals, current home score, current away score, adj mode, adj parameter (0-[draw_adj, draw_split])
+# input home exp goals, away expt goals, current home score, current away score, adj mode, adj parameter (0-[draw_adj, draw_split])
 # examp=cal_soccer_odds()
 # examp.set_value([0,2.7],[0,0],[1,-0.08])
 # print(examp.had())
-# examp.asian_handicap(-0.5)
+# print(examp.asian_handicap(-0.5))
 # examp.over_under(2.5)
 # examp.exact_totals(5)
 # examp.correct_score(3,1)
