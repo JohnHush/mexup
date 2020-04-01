@@ -111,3 +111,37 @@ class period():
     SOCCER_75_90_MIN = 1012
     # 足球加时
     SOCCER_EXTRA = 1013
+
+class match_states():
+    # 已结束
+    ENDED = 0
+    # 推迟
+    POSTPONE = 1
+    # 中断
+    INTERRUPTED = 2
+    # 取消
+    CANCELED =3
+    # 即将开赛
+    UPCOMING = 4
+    # 滚球
+    LIVE = 5
+    # 上半场 - 全称
+    SOCCER_FIRST_HALF = 6
+    # 半场时间 - 全称
+    SOCCER_HALF_TIME = 7
+    # 下半场 - 全称
+    SOCCER_SECOND_HALF = 8
+    # ET(加时赛) - 上半场 - 全称
+    SOCCER_ET_FIRST_HALF = 9
+    # ET(加时赛) - 半场时间 - 全称
+    SOCCER_ET_HALF_TIME = 10
+    # ET(加时赛) - 后半场
+    SOCCER_ET_SECOND_HALF = 11
+    # 常规时间结束
+    SOCCER_FULL_TIME = 13
+    # ET(加时赛) - 结束
+    SOCCER_ET_ENDED = 14
+    # 点球开始
+    SOCCER_PENALTY = 15
+    # 点球结束
+    SOCCER_PENALTY_ENDED = 16

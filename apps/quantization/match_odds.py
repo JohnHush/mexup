@@ -1,5 +1,5 @@
 from apps.quantization.soccer_poisson import cal_soccer_odds
-from apps.quantization.constans import market_type,period
+from apps.quantization.constans import market_type, period, match_states
 
 
 import numpy as np
@@ -9,7 +9,7 @@ import numpy as np
 
 # mu: [supremacy, total goals]
 # score=[half_time_score,full_time_score,score_0_15, score_15_30, score_30_45, score_45_60, score_60_75, score_75_90]
-# decay=[decay_home, decay_away]
+# decay 衰减系数
 # parameter=[adj_mode, rho]或者[adj_mode,[draw_adj, draw_split]]
 # clock=[stage, running_time, ht_add, ft_ad, et_ht_add, et_ft_add]
 
@@ -25,8 +25,6 @@ class cal_match_odds(object):
         self.mu = mu
         self.clock = clock
         self.parameter = parameter
-        self.mu_home = (self.mu[0] + self.mu[1]) / 2
-        self.mu_away = (self.mu[1] - self.mu[0]) / 2
 
         self.half_time_score = score[0]
         self.full_time_score = score[1]
@@ -37,54 +35,29 @@ class cal_match_odds(object):
         self.ht_add = clock[2]
         self.ft_add = clock[3]
 
-        self.decay_home = decay[0]
-        self.decay_away = decay[1]
+        self.decay = decay
         self.parameter = parameter
 
-        # self.stage 0-赛前，1-上半场 ，2-中场 ，3-下半场，4-全场结束
+        # self.stage 4-赛前，6-上半场 ，7-中场 ，8-下半场，0-全场结束
 
-        self.time_remain_2nd_half = (45 + self.ft_add) / (90 + self.ft_add)
+        self.time_remain_2nd_half = (45*60 + self.ft_add) / (90*60 + self.ft_add)
 
-        if self.stage in [0, 1]:
-            self.time_remain_now = (90 + self.ft_add + self.ht_add - self.running_time) / (
-                        90 + self.ft_add + self.ht_add)
+        if self.stage in [4, 6]:
+            self.time_remain_now = (90*60 + self.ft_add + self.ht_add - self.running_time) / (
+                        90*60 + self.ft_add + self.ht_add)
 
-            self.mu_home_now = self.mu_home * (self.time_remain_now ** self.decay_home)
-            self.mu_away_now = self.mu_away * (self.time_remain_now ** self.decay_away)
+            self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0,1]]
+            self.mu_second_half = [self.mu[i] * (self.time_remain_2nd_half ** self.decay) for i in [0, 1]]
+            self.mu_first_half_now = [self.mu_now[i] - self.mu_second_half[i] for i in [0, 1]]
+            self.mu_second_half_now = self.mu_second_half
 
-            self.exp_home_goals_2nd_half = self.mu_home * (self.time_remain_2nd_half ** self.decay_home)
-            self.exp_away_goals_2nd_half = self.mu_away * (self.time_remain_2nd_half ** self.decay_away)
+        elif self.stage in [7, 8]:
+            self.time_remain_now = (90*60 + self.ft_add - self.running_time) / (90*60 + self.ft_add)
+            self.mu_1st_half_now = [0, 0]
+            self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0, 1]]
+            self.mu_second_half_now = self.mu_now
 
-            self.sup_2nd_half_now= self.exp_home_goals_2nd_half-self.exp_away_goals_2nd_half
-            self.ttg_2nd_half_now = self.exp_home_goals_2nd_half + self.exp_away_goals_2nd_half
-            self.mu_2nd_half_now=[self.sup_2nd_half_now,self.ttg_2nd_half_now]
-
-
-            self.sup_full_time_now = self.mu_home_now - self.mu_away_now
-            self.ttg_full_time_now = self.mu_home_now + self.mu_away_now
-            self.mu_full_time_now = [self.sup_full_time_now, self.ttg_full_time_now]
-
-            self.sup_1st_half_now = self.sup_full_time_now - (
-                        self.exp_home_goals_2nd_half - self.exp_away_goals_2nd_half)
-            self.ttg_1st_half_now = self.ttg_full_time_now - (
-                        self.exp_home_goals_2nd_half + self.exp_away_goals_2nd_half)
-            self.mu_1st_half_now = [self.sup_1st_half_now, self.ttg_1st_half_now]
-
-        elif self.stage in [2, 3]:
-            self.time_remain_now = (90 + self.ft_add - self.running_time) / (90 + self.ft_add)
-            self.mu_1st_half_now = [0,0]
-
-
-            self.mu_home_now = self.mu_home * (self.time_remain_now ** self.decay_home)
-            self.mu_away_now = self.mu_away * (self.time_remain_now ** self.decay_away)
-
-            self.sup_full_time_now = self.mu_home_now - self.mu_away_now
-            self.ttg_full_time_now = self.mu_home_now + self.mu_away_now
-            self.mu_full_time_now = [self.sup_full_time_now, self.ttg_full_time_now]
-
-            self.mu_2nd_half_now =self.mu_full_time_now
-
-        elif self.stage == 4:
+        elif self.stage == 0:
             self.mu_1st_half_now = [0,0]
             self.mu_full_time_now = [0,0]
             self.mu_2nd_half_now = [0,0]
