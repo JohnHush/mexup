@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
+from apps.quantization.constans import selection_type
 from apps.quantization.soccer_poisson import cal_soccer_odds
 #score = [0,0]
 # asian_handicap_market=[-0.5,1.84,1.99]
@@ -85,11 +85,11 @@ class infer_soccer_model_input(object):
 
     def over_under_cost_function(self, x):
         self.odds_tool.set_value([0, x], self.score, self.parameter)
-        return self.odds_tool.over_under(self.over_under_line)['over']-self.over_market_100_margin
+        return self.odds_tool.over_under(self.over_under_line)[selection_type.OVER]-self.over_market_100_margin
 
     def asian_handicap_cost_function(self, x, exp_total_goals_middle):
         self.odds_tool.set_value([x, exp_total_goals_middle], self.score, self.parameter)
-        return self.odds_tool.asian_handicap(self.asian_handicap_line)['home']-self.home_market_100_margin
+        return self.odds_tool.asian_handicap(self.asian_handicap_line)[selection_type.HOME]-self.home_market_100_margin
 
 
 # rho = -0.08
