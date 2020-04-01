@@ -177,20 +177,20 @@ class cal_soccer_odds(object):
             under_prob=0
         return over_prob,under_prob
     
-#输出双重机会大小
-    def double_chance_over_under(self,line):
-        home_prob_matrix=np.tril(self.prob_matrix,-1+self.goal_diff)
-        away_prob_matrix=np.triu(self.prob_matrix,1+self.goal_diff)
-        draw_prob_matrix=self.prob_matrix-home_prob_matrix-away_prob_matrix
-        
-        home_plus_draw_prob_matrix=home_prob_matrix+draw_prob_matrix
-        home_plus_away_prob_matrix=home_prob_matrix+away_prob_matrix
-        draw_plus_away_prob_matrix=draw_prob_matrix+away_prob_matrix
-        
-        home_plus_draw_over,home_plus_draw_under=self.cal_over_under(home_plus_draw_prob_matrix,line)
-        home_plus_away_over,home_plus_away_under=self.cal_over_under(home_plus_away_prob_matrix,line)
-        draw_plus_away_over,draw_plus_away_under=self.cal_over_under(draw_plus_away_prob_matrix,line)
-        return {'home_draw_over': round(home_plus_draw_over,5),'home_draw_under': round(home_plus_draw_under,5),'home_away_over': round(home_plus_away_over,5),'home_away_under': round(home_plus_away_under,5),'draw_away_over': round(draw_plus_away_over,5),'draw_away_under': round(draw_plus_away_under,5)}
+# #输出双重机会大小
+#     def double_chance_over_under(self,line):
+#         home_prob_matrix=np.tril(self.prob_matrix,-1+self.goal_diff)
+#         away_prob_matrix=np.triu(self.prob_matrix,1+self.goal_diff)
+#         draw_prob_matrix=self.prob_matrix-home_prob_matrix-away_prob_matrix
+#
+#         home_plus_draw_prob_matrix=home_prob_matrix+draw_prob_matrix
+#         home_plus_away_prob_matrix=home_prob_matrix+away_prob_matrix
+#         draw_plus_away_prob_matrix=draw_prob_matrix+away_prob_matrix
+#
+#         home_plus_draw_over,home_plus_draw_under=self.cal_over_under(home_plus_draw_prob_matrix,line)
+#         home_plus_away_over,home_plus_away_under=self.cal_over_under(home_plus_away_prob_matrix,line)
+#         draw_plus_away_over,draw_plus_away_under=self.cal_over_under(draw_plus_away_prob_matrix,line)
+#         return {'home_draw_over': round(home_plus_draw_over,5),'home_draw_under': round(home_plus_draw_under,5),'home_away_over': round(home_plus_away_over,5),'home_away_under': round(home_plus_away_under,5),'draw_away_over': round(draw_plus_away_over,5),'draw_away_under': round(draw_plus_away_under,5)}
 
 #准确进球数
     def exact_totals(self,target_goals):
@@ -289,7 +289,7 @@ class cal_soccer_odds(object):
     
 #双方球队都进球
     def both_scored(self):
-        yes_prob=self.home_over_under(0.5)['OVER']*self.away_over_under(0.5)['UNDER']
+        yes_prob=self.home_over_under(0.5)[selection_type.OVER]*self.away_over_under(0.5)[selection_type.UNDER]
         no_prob=1-yes_prob
         return {selection_type.YES: round(yes_prob,5), selection_type.NO: round(no_prob,5)}
 

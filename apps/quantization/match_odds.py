@@ -1,5 +1,5 @@
 from apps.quantization.soccer_poisson import cal_soccer_odds
-from apps.quantization.constans import market_type
+from apps.quantization.constans import market_type,period
 
 
 import numpy as np
@@ -90,79 +90,149 @@ class cal_match_odds(object):
             self.mu_2nd_half_now = [0,0]
 
 
-    def full_time(self):
+    def odds_output(self):
         self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
         self.odds_tool_1st_half.set_value(self.mu_1st_half_now, self.half_time_score, self.parameter)
         self.odds_tool_2nd_half.set_value(self.mu_2nd_half_now, self.second_half_socore, self.parameter)
-        dic={}
+
+        odds={}
+    #计算上半场玩法的赔率
+        full_time_odds={}
+
         #输出SOCCER_3WAY玩法
-        dic[market_type.SOCCER_3WAY]=self.odds_tool_full_time.had()
+        full_time_odds[market_type.SOCCER_3WAY]=self.odds_tool_full_time.had()
 
         #输出亚盘让球玩法、 SOCCER_ASIAN_HANDICAP
         asian_handicap={}
         ahc_line_list = np.arange(-15, 12.25, 0.25)
         for i in ahc_line_list:
             asian_handicap[str(i)]=self.odds_tool_full_time.asian_handicap(i)
-        dic[market_type.SOCCER_ASIAN_HANDICAP]=asian_handicap
+        full_time_odds[market_type.SOCCER_ASIAN_HANDICAP]=asian_handicap
 
         #输出亚盘大小玩法 SOCCER_ASIAN_TOTALS
         over_under = {}
         hilo_line_list = np.arange(0.5, 20.25, 0.25)
         for j in hilo_line_list:
             over_under[str(j)] = self.odds_tool_full_time.over_under(j)
-        dic[market_type.SOCCER_ASIAN_TOTALS]=over_under
+        full_time_odds[market_type.SOCCER_ASIAN_TOTALS]=over_under
 
         #输出正确比分玩法赔率 SOCCER_CORRECT_SCORE
         correct_score={}
         for i in range(0,6):
             for j in range(0,6):
                 correct_score[ str(i)+'_'+str(j)] = self.odds_tool_full_time.correct_score(i,j)
-        dic[market_type.SOCCER_CORRECT_SCORE]=correct_score
+        full_time_odds[market_type.SOCCER_CORRECT_SCORE]=correct_score
 
         # #输出双重机会大小玩法赔率
         # double_chance_over_under={}
         # for k in [1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5]:
         #     double_chance_over_under[str(k)] = self.odds_tool_full_time.double_chance_over_under(k)
-        # dic['double_chance_over_under']=double_chance_over_under
+        # first_half_odds['double_chance_over_under']=double_chance_over_under
 
         #输出主队亚盘大小 SOCCER_TOTAL_HOME_TEAM
         home_over_under={}
         home_ou_line_list = np.arange(0.5, 15.25, 0.25)
         for j in home_ou_line_list:
             home_over_under[str(j)] = self.odds_tool_full_time.home_over_under(j)
-        dic[market_type.SOCCER_GOALS_HOME_TEAM]=home_over_under
+        full_time_odds[market_type.SOCCER_GOALS_HOME_TEAM]=home_over_under
 
         #输出客队亚盘大小 SOCCER_TOTAL_AWAY_TEAM
         away_over_under={}
         away_ou_line_list = np.arange(0.5, 15.25, 0.25)
         for j in away_ou_line_list:
             away_over_under[str(j)] = self.odds_tool_full_time.away_over_under(j)
-        dic[market_type.SOCCER_GOALS_AWAY_TEAM]=away_over_under
+        full_time_odds[market_type.SOCCER_GOALS_AWAY_TEAM]=away_over_under
 
         # #输出主队净胜
         # home_winning_by={}
         # for i in [1,2,3,4,5,6,7,8,9,10,11,12]:
         #     home_winning_by[str(i)] = self.odds_tool_full_time.home_winning_by(i)
-        # dic['home_winning_by']=home_winning_by
+        # full_time_odds['home_winning_by']=home_winning_by
         #
         # # 输出客队净胜
         # away_winning_by = {}
         # for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]:
         #     away_winning_by[str(i)] = self.odds_tool_full_time.away_winning_by(i)
-        # dic['away_winning_by']=away_winning_by
+        # full_time_odds['away_winning_by']=away_winning_by
 
         #输出是否都进球玩法赔率 SOCCER_BOTH_TEAMS_TO_SCORE
-        dic[market_type.SOCCER_BOTH_TEAMS_TO_SCORE] = self.odds_tool_full_time.both_scored()
+        full_time_odds[market_type.SOCCER_BOTH_TEAMS_TO_SCORE] = self.odds_tool_full_time.both_scored()
 
         #输出奇偶玩法赔率 SOCCER_ODD_EVEN_GOALS
-        dic[market_type.SOCCER_ODD_EVEN_GOALS]=self.odds_tool_full_time.odd_even()
+        full_time_odds[market_type.SOCCER_ODD_EVEN_GOALS] = self.odds_tool_full_time.odd_even()
 
         #输出半全场玩法赔率
+        odds[period.SOCCER_FIRST_HALF]= full_time_odds
 
-        return dic
-# #
+    #输出上半场玩法赔率
+        first_half_odds = {}
+        #输出SOCCER_3WAY玩法
+        first_half_odds[market_type.SOCCER_3WAY] = self.odds_tool_1st_half.had()
+
+        #输出亚盘让球玩法、 SOCCER_ASIAN_HANDICAP
+        asian_handicap={}
+        ahc_line_list = np.arange(-10, 10.25, 0.25)
+        for i in ahc_line_list:
+            asian_handicap[str(i)]=self.odds_tool_1st_half.asian_handicap(i)
+        first_half_odds[market_type.SOCCER_ASIAN_HANDICAP]=asian_handicap
+
+        #输出亚盘大小玩法 SOCCER_ASIAN_TOTALS
+        over_under = {}
+        hilo_line_list = np.arange(0.5, 15.25, 0.25)
+        for j in hilo_line_list:
+            over_under[str(j)] = self.odds_tool_1st_half.over_under(j)
+        first_half_odds[market_type.SOCCER_ASIAN_TOTALS]=over_under
+
+        #输出正确比分玩法赔率 SOCCER_CORRECT_SCORE
+        correct_score={}
+        for i in range(0,6):
+            for j in range(0,6):
+                correct_score[ str(i)+'_'+str(j)] = self.odds_tool_1st_half.correct_score(i,j)
+        first_half_odds[market_type.SOCCER_CORRECT_SCORE]=correct_score
+
+        # #输出双重机会大小玩法赔率
+        # double_chance_over_under={}
+        # for k in [1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5]:
+        #     double_chance_over_under[str(k)] = self.odds_tool_full_time.double_chance_over_under(k)
+        # first_half_odds['double_chance_over_under']=double_chance_over_under
+
+        #输出主队亚盘大小 SOCCER_TOTAL_HOME_TEAM
+        home_over_under={}
+        home_ou_line_list = np.arange(0.5, 10.25, 0.25)
+        for j in home_ou_line_list:
+            home_over_under[str(j)] = self.odds_tool_1st_half.home_over_under(j)
+        first_half_odds[market_type.SOCCER_GOALS_HOME_TEAM]=home_over_under
+
+        #输出客队亚盘大小 SOCCER_TOTAL_AWAY_TEAM
+        away_over_under={}
+        away_ou_line_list = np.arange(0.5, 10.25, 0.25)
+        for j in away_ou_line_list:
+            away_over_under[str(j)] = self.odds_tool_1st_half.away_over_under(j)
+        first_half_odds[market_type.SOCCER_GOALS_AWAY_TEAM]=away_over_under
+
+        # #输出主队净胜
+        # home_winning_by={}
+        # for i in [1,2,3,4,5,6,7,8,9,10,11,12]:
+        #     home_winning_by[str(i)] = self.odds_tool_1st_half.home_winning_by(i)
+        # first_half_odds['home_winning_by']=home_winning_by
+        #
+        # # 输出客队净胜
+        # away_winning_by = {}
+        # for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]:
+        #     away_winning_by[str(i)] = self.odds_tool_1st_half.away_winning_by(i)
+        # first_half_odds['away_winning_by']=away_winning_by
+
+        #输出是否都进球玩法赔率 SOCCER_BOTH_TEAMS_TO_SCORE
+        first_half_odds[market_type.SOCCER_BOTH_TEAMS_TO_SCORE] = self.odds_tool_1st_half.both_scored()
+
+        #输出奇偶玩法赔率 SOCCER_ODD_EVEN_GOALS
+        first_half_odds[market_type.SOCCER_ODD_EVEN_GOALS]=self.odds_tool_1st_half.odd_even()
+
+        odds[period.SOCCER_FIRST_HALF] = first_half_odds
+        return odds
+
 # match=cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
 #
-# print(match.full_time())
+# print(match.odds_output())
 
 
