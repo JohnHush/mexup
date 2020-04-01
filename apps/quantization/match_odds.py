@@ -1,6 +1,6 @@
 from apps.quantization.soccer_poisson import cal_soccer_odds
 from apps.quantization.constans import market_type
-from apps.quantization.constans import selection_type
+
 
 import numpy as np
 #输入参数
