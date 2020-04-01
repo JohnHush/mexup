@@ -6,6 +6,9 @@ from abc import ABC
 from apps.base.base_handler import BaseHandler
 
 #反查 totoal goal
+from apps.quantization.constans import config
+
+
 class InferSoccerTotalGoalsHandler(BaseHandler, ABC):
     def get(self):
         inferSoccer = self.getInferSoccer();
@@ -28,7 +31,7 @@ class InferSoccerTotalGoalsHandler(BaseHandler, ABC):
         over_under_market = [float(self.get_argument("ou_line")), float(self.get_argument("ou_home_odds")),
                              float(self.get_argument("ou_away_odds"))]
         max_total_goals = 16
-        eps = float(self.get_argument("eps"))
+        #eps = float(self.get_argument("eps"))
         adjModel = int(self.get_argument("adj_mode"))
 
         parameter = None
@@ -37,7 +40,7 @@ class InferSoccerTotalGoalsHandler(BaseHandler, ABC):
         else:
             parameter = [adjModel, [float(self.get_argument("draw_adj")), float(self.get_argument("draw_split"))]]
 
-        inferSoccer.set_value_ou(query_score,over_under_market,max_total_goals,parameter,eps)
+        inferSoccer.set_value_ou(query_score,over_under_market,max_total_goals,parameter,config.infer_eps)
 
 #反查 supremacy
 class InferSoccerSupremacyHandler(BaseHandler, ABC):

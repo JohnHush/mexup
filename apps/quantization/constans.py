@@ -1,3 +1,8 @@
+#配置类
+class config():
+    #反查精度
+    infer_eps = 0.001
+
 #市场类型
 class market_type():
     # 足球亚盘让球

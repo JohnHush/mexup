@@ -36,7 +36,7 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
 
         mu = [float(self.get_argument("supremacy")), float(self.get_argument("total_goals"))]
 
-        #cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
+        #cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],0.88,[1,-0.08])
 
         score = [ [int(self.get_argument("half_time_score_home")), int(self.get_argument("half_time_score_away"))],
                  [int(self.get_argument("full_time_score_home")), int(self.get_argument("full_time_score_away"))] ]
