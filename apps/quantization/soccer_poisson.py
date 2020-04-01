@@ -67,7 +67,7 @@ class cal_soccer_odds(object):
         home_prob=np.tril(self.prob_matrix,-1+self.goal_diff).sum()
         draw_prob=np.diag(self.prob_matrix,self.goal_diff).sum()
         away_prob=np.triu(self.prob_matrix,1+self.goal_diff).sum()
-        return {'home': round(home_prob,5), 'draw': round(draw_prob,5), 'away': round(away_prob,5)}
+        return {'HOME': round(home_prob,5), 'DRAW': round(draw_prob,5), 'AWAY': round(away_prob,5)}
 
 #输出double change 玩法
     def double_chance(self):
@@ -78,7 +78,7 @@ class cal_soccer_odds(object):
         home_plus_draw_prob=home_prob+draw_prob
         home_plus_away_prob=home_prob+away_prob
         draw_plus_away=draw_prob+away_prob
-        return {'home_draw': round(home_plus_draw_prob,5),'home_away':round(home_plus_away_prob,5),'draw_away':round(draw_plus_away,5)}
+        return {'HOME_OR_DRAW': round(home_plus_draw_prob,5),'HOME_OR_AWAY':round(home_plus_away_prob,5),'AWAY_OR_DRAW':round(draw_plus_away,5)}
     
     
 #输出 指定亚盘让球线的概率
@@ -110,7 +110,7 @@ class cal_soccer_odds(object):
             away_prob_1=np.triu(self.prob_matrix,2+slice_line).sum()
             home_prob=home_prob_1/(home_prob_1+away_prob_1)
             away_prob=away_prob_1/(home_prob_1+away_prob_1)
-        return {'home': round(home_prob, 5), 'away': round(away_prob, 5)}
+        return {'HOME': round(home_prob, 5), 'AWAY': round(away_prob, 5)}
     
 #矩阵90度向左翻转
     def flip90_left(self,arr):
@@ -151,7 +151,7 @@ class cal_soccer_odds(object):
 #             print("please in put valid line!")
             over_prob=0
             under_prob=0
-        return {'over': round(over_prob,5), 'under': round(under_prob,5)}
+        return {'OVER': round(over_prob,5), 'UNDER': round(under_prob,5)}
     
 #输出正确比分概率
     def correct_score(self,home_target_score,away_target_score):
@@ -229,7 +229,7 @@ class cal_soccer_odds(object):
         else:
             over_prob=0
             under_prob=0
-        return {'over': round(over_prob,5),'under': round(under_prob,5)}
+        return {'OVER': round(over_prob,5),'UNDER': round(under_prob,5)}
 
 #客队进球数over under    
     def away_over_under(self,line):
@@ -260,37 +260,37 @@ class cal_soccer_odds(object):
         else:
             over_prob=0
             under_prob=0
-        return {'over': round(over_prob,5),'under': round(under_prob,5)}
+        return {'OVER': round(over_prob,5), 'UNDER': round(under_prob,5)}
 
 #主队准确进球数
     def home_exact_totals(self,home_target_goals):
         net_home_target_goals=home_target_goals-self.home_score
         home_target_goals_prob=self.home_prob_vector[net_home_target_goals]
-        return round(home_target_goals_prob,5)
+        return {'YES': round(home_target_goals_prob,5)}
     
 #客队准确进球数
     def away_exact_totals(self,away_target_goals):
         net_away_target_goals=away_target_goals-self.away_score
         away_target_goals_prob=self.away_prob_vector[net_away_target_goals]
-        return round(away_target_goals_prob,5)
+        return {'YES': round(away_target_goals_prob,5)}
     
 #主队净胜n球胜出
     def home_winning_by(self,target_winning_by):
         net_target_winning_by=target_winning_by-self.goal_diff
         home_winning_by_prob=np.diag(self.prob_matrix,-net_target_winning_by).sum()
-        return round(home_winning_by_prob,5)
+        return {'YES': round(home_winning_by_prob,5)}
     
 #客队净胜n球胜出
     def away_winning_by(self,target_winning_by):
         net_target_winning_by=target_winning_by+self.goal_diff
         away_winning_by_prob=np.diag(self.prob_matrix,net_target_winning_by).sum()
-        return round(away_winning_by_prob,5)
+        return {'YES': round(away_winning_by_prob,5)}
     
 #双方球队都进球
     def both_scored(self):
         yes_prob=self.home_over_under(0.5)['over']*self.away_over_under(0.5)['over']
         no_prob=1-yes_prob
-        return {'yes': round(yes_prob,5), 'no': round(no_prob,5)}
+        return {'YES': round(yes_prob,5), 'NO': round(no_prob,5)}
 
 #odd even玩法
     def odd_even(self):
@@ -303,7 +303,7 @@ class cal_soccer_odds(object):
                     even_prob+=self.prob_matrix[i,j]
                 elif (i+j+self.goal_sum)%2==1:
                     odd_prob+=self.prob_matrix[i,j]
-        return {'odd': round(odd_prob,5),'even': round(even_prob,5)}
+        return {'ODD': round(odd_prob,5),'EVEN': round(even_prob,5)}
 
 
 
