@@ -83,3 +83,31 @@ class selection_type():
     HOME_WIN=16
     #客胜
     AWAY_WIN=17
+
+class period():
+    # 足球全场
+    SOCCER_FULL_TIME = 1001
+    # 足球上半场
+    SOCCER_FIRST_HALF = 1002
+    # 足球下半场
+    SOCCER_SECOND_HALF = 1003
+    # 足球第一个加时
+    SOCCER_EXTRA_FIRST_HALF = 1004
+    # 足球第二个加时
+    SOCCER_EXTRA_SECOND_HALF = 1005
+    # 足球点球/罚球
+    SOCCER_PENALTY_KICK = 1006
+    # 足球0-15min
+    SOCCER_0_15_MIN = 1007
+    # 足球15-30min
+    SOCCER_15_30_MIN = 1008
+    # 足球30-45min
+    SOCCER_30_45_MIN = 1009
+    # 足球45-60min
+    SOCCER_45_60_MIN = 1010
+    # 足球60-75min
+    SOCCER_60_75_MIN = 1011
+    # 足球75-90min
+    SOCCER_75_90_MIN = 1012
+    # 足球加时
+    SOCCER_EXTRA = 1013
