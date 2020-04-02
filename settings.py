@@ -3,7 +3,7 @@ import os
 
 from tornado.options import define
 
-from configs import initialize_logging
+from apps.configs.log_config import initialize_logging
 
 
 # 编码设置

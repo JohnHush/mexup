@@ -38,7 +38,7 @@ class cal_match_odds(object):
         self.decay = decay
         self.parameter = parameter
 
-        # self.stage 4-赛前，6-上半场 ，7-中场 ，8-下半场，0-全场结束
+        # self.stage 4-赛前，6-上半场 ，7-中场 ，8-下半场，0-结束（包含加时和点球），13-常规时间结束
 
         self.time_remain_2nd_half = (45*60 + self.ft_add) / (90*60 + self.ft_add)
 
@@ -57,7 +57,7 @@ class cal_match_odds(object):
             self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0, 1]]
             self.mu_second_half_now = self.mu_now
 
-        elif self.stage == 0:
+        elif self.stage == 13:
             self.mu_1st_half_now = [0,0]
             self.mu_full_time_now = [0,0]
             self.mu_2nd_half_now = [0,0]
