@@ -38,7 +38,7 @@ class cal_match_odds(object):
         self.decay = decay
         self.parameter = parameter
 
-        # self.stage 4-赛前，6-上半场 ，7-中场 ，8-下半场，0-结束（包含加时和点球），13-常规时间结束
+        # self.stage 4-赛前，6-上半场 ，7-中场 ，8-下半场，13-常规时间结束, 0-结束(包含加时和点球)
 
         self.time_remain_2nd_half = (45*60 + self.ft_add) / (90*60 + self.ft_add)
 
@@ -57,19 +57,26 @@ class cal_match_odds(object):
             self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0, 1]]
             self.mu_second_half_now = self.mu_now
 
-        elif self.stage == 13:
-            self.mu_1st_half_now = [0,0]
-            self.mu_full_time_now = [0,0]
-            self.mu_2nd_half_now = [0,0]
+        # elif self.stage == 13:
+        #     self.mu_1st_half_now = [0,0]
+        #     self.mu_full_time_now = [0,0]
+        #     self.mu_2nd_half_now = [0,0]
 
 
     def odds_output(self):
         self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
         self.odds_tool_1st_half.set_value(self.mu_1st_half_now, self.half_time_score, self.parameter)
         self.odds_tool_2nd_half.set_value(self.mu_2nd_half_now, self.second_half_socore, self.parameter)
+        odds = {}
+        if self.stage in [4, 6]:
+            odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
+            odds[period.SOCCER_FIRST_HALF] = self.cal_first_half_odds()
+        elif self.stage in [7, 8]:
+            odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
 
-        odds={}
-    #计算上半场玩法的赔率
+    #计算全场玩法的赔率
+    def cal_full_time_odds(self):
+
         full_time_odds={}
 
         #输出SOCCER_3WAY玩法
@@ -134,11 +141,13 @@ class cal_match_odds(object):
         #输出奇偶玩法赔率 SOCCER_ODD_EVEN_GOALS
         full_time_odds[market_type.SOCCER_ODD_EVEN_GOALS] = self.odds_tool_full_time.odd_even()
 
-        #输出半全场玩法赔率
-        odds[period.SOCCER_FULL_TIME]= full_time_odds
+        return full_time_odds
 
     #输出上半场玩法赔率
+    def cal_first_half_odds(self):
+
         first_half_odds = {}
+
         #输出SOCCER_3WAY玩法
         first_half_odds[market_type.SOCCER_3WAY] = self.odds_tool_1st_half.had()
 
@@ -201,8 +210,7 @@ class cal_match_odds(object):
         #输出奇偶玩法赔率 SOCCER_ODD_EVEN_GOALS
         first_half_odds[market_type.SOCCER_ODD_EVEN_GOALS]=self.odds_tool_1st_half.odd_even()
 
-        odds[period.SOCCER_FIRST_HALF] = first_half_odds
-        return odds
+        return first_half_odds
 
 # match=cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
 #
