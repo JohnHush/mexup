@@ -64,14 +64,18 @@ class cal_match_odds(object):
 
 
     def odds_output(self):
-        self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
-        self.odds_tool_1st_half.set_value(self.mu_first_half_now, self.half_time_score, self.parameter)
-        self.odds_tool_2nd_half.set_value(self.mu_second_half_now, self.second_half_socore, self.parameter)
+
         odds = {}
         if self.stage in [4, 6]:
+            self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
+            self.odds_tool_1st_half.set_value(self.mu_first_half_now, self.half_time_score, self.parameter)
+            self.odds_tool_2nd_half.set_value(self.mu_second_half_now, self.second_half_socore, self.parameter)
+
             odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
             odds[period.SOCCER_FIRST_HALF] = self.cal_first_half_odds()
         elif self.stage in [7, 8]:
+            self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
+            self.odds_tool_2nd_half.set_value(self.mu_second_half_now, self.second_half_socore, self.parameter)
             odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
         return odds
     #计算全场玩法的赔率
@@ -213,8 +217,7 @@ class cal_match_odds(object):
         return first_half_odds
 
 # match=cal_match_odds()
-# match.set_value([0.5,2.7],[[0,0],[0,0]],[4,0,1,3],0.88,[1,-0.08])
+# match.set_value([0.5,2.7],[[0,0],[0,0]],[8,45*60,1*60,3*60],0.88,[1,-0.08])
 #
 # print(match.odds_output())
-#
 
