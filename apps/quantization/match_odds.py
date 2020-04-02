@@ -14,11 +14,11 @@ import numpy as np
 # clock=[stage, running_time, ht_add, ft_ad, et_ht_add, et_ft_add]
 
 class cal_match_odds(object):
-    def __init__(self, mu, score, clock, decay, parameter):
+    def __init__(self):
         self.odds_tool_full_time = cal_soccer_odds()
-        self.odds_tool_1st_half=cal_soccer_odds()
+        self.odds_tool_1st_half = cal_soccer_odds()
         self.odds_tool_2nd_half = cal_soccer_odds()
-        self.set_value(mu, score, clock, decay, parameter)
+        # self.set_value(mu, score, clock, decay, parameter)
 
     def set_value(self, mu, score, clock, decay, parameter):
 
@@ -28,7 +28,7 @@ class cal_match_odds(object):
 
         self.half_time_score = score[0]
         self.full_time_score = score[1]
-        self.second_half_socore=[self.full_time_score[i]-self.half_time_score[i] for i in range(len(self.half_time_score))]
+        self.second_half_socore=[self.full_time_score[i]-self.half_time_score[i] for i in [0, 1]]
 
         self.stage = clock[0]
         self.running_time = clock[1]
@@ -46,16 +46,16 @@ class cal_match_odds(object):
             self.time_remain_now = (90*60 + self.ft_add + self.ht_add - self.running_time) / (
                         90*60 + self.ft_add + self.ht_add)
 
-            self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0,1]]
+            self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0, 1]]
             self.mu_second_half = [self.mu[i] * (self.time_remain_2nd_half ** self.decay) for i in [0, 1]]
-            self.mu_first_half_now = [self.mu_now[i] - self.mu_second_half[i] for i in [0, 1]]
+            self.mu_first_half_now = [self.mu_full_time_now[i] - self.mu_second_half[i] for i in [0, 1]]
             self.mu_second_half_now = self.mu_second_half
 
         elif self.stage in [7, 8]:
             self.time_remain_now = (90*60 + self.ft_add - self.running_time) / (90*60 + self.ft_add)
             self.mu_1st_half_now = [0, 0]
             self.mu_full_time_now = [self.mu[i] * (self.time_remain_now ** self.decay) for i in [0, 1]]
-            self.mu_second_half_now = self.mu_now
+            self.mu_second_half_now = self.mu_full_time_now
 
         # elif self.stage == 13:
         #     self.mu_1st_half_now = [0,0]
@@ -65,15 +65,15 @@ class cal_match_odds(object):
 
     def odds_output(self):
         self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
-        self.odds_tool_1st_half.set_value(self.mu_1st_half_now, self.half_time_score, self.parameter)
-        self.odds_tool_2nd_half.set_value(self.mu_2nd_half_now, self.second_half_socore, self.parameter)
+        self.odds_tool_1st_half.set_value(self.mu_first_half_now, self.half_time_score, self.parameter)
+        self.odds_tool_2nd_half.set_value(self.mu_second_half_now, self.second_half_socore, self.parameter)
         odds = {}
         if self.stage in [4, 6]:
             odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
             odds[period.SOCCER_FIRST_HALF] = self.cal_first_half_odds()
         elif self.stage in [7, 8]:
             odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
-
+        return odds
     #计算全场玩法的赔率
     def cal_full_time_odds(self):
 
@@ -212,8 +212,9 @@ class cal_match_odds(object):
 
         return first_half_odds
 
-# match=cal_match_odds([0.5,2.7],[[0,0],[0,0]],[0,0,1,3],[0.88,0.88],[1,-0.08])
+# match=cal_match_odds()
+# match.set_value([0.5,2.7],[[0,0],[0,0]],[4,0,1,3],0.88,[1,-0.08])
 #
 # print(match.odds_output())
-
+#
 
