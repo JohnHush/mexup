@@ -69,7 +69,7 @@ class InferSoccerSupremacyHandler(BaseHandler, ABC):
 
         total_goals = float(self.get_argument("total_goals"))
 
-        eps = float(self.get_argument("eps"))
+        eps = config.infer_eps;
         adjModel = int(self.get_argument("adj_mode"))
 
         parameter = None
