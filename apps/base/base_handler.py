@@ -79,7 +79,10 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
         # parameter=[adj_mode, rho]或者[adj_mode,[draw_adj, draw_split]]
         # clock=[stage, running_time, ht_add, ft_ad]
 
-        return cal_match_odds(mu,score, clock, decay, parameter)
+        matchOdds = cal_match_odds()
+        matchOdds.set_value(mu,score, clock, decay, parameter)
+
+        return matchOdds
 
 
     # def getSoccerOdds(self):
