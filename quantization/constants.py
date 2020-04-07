@@ -12,7 +12,7 @@ class market_type():
     # 欧盘大小球
     SOCCER_TOTALS=1003
     # 足球波胆=小于6球)
-    SOCCER_CORRECT_SCORE=1004
+    SOCCER_CORRECT_SCORE=1029
     # 足球独赢
     SOCCER_3WAY=1005
     # 足球平局退款

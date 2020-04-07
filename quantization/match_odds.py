@@ -101,8 +101,8 @@ class cal_match_odds(object):
 
         #输出正确比分玩法赔率 SOCCER_CORRECT_SCORE
         correct_score={}
-        for i in range(0,6):
-            for j in range(0,6):
+        for i in range(0,7):
+            for j in range(0,7):
                 correct_score[ str(i)+'_'+str(j)] = self.odds_tool_full_time.correct_score(i,j)
         full_time_odds[market_type.SOCCER_CORRECT_SCORE]=correct_score
 
