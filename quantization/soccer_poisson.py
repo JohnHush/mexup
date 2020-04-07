@@ -6,7 +6,7 @@
 import numpy as np
 # import pandas as pd
 from scipy.stats import poisson
-from apps.quantization.constans import selection_type
+from quantization.constants import selection_type
 import math
 
 

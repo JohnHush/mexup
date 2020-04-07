@@ -24,6 +24,7 @@ python server.py
 │         log_config.py           # log配置
 ├─docs                            # 项目文档/说明
 ├─quantization                    # 模型层 负责算法模型
+│         constans.py             #常量 包括反查精度 市场枚举 period枚举 盘口状态枚举等
 │         soccer_poisson.py       #足球模型
 │         match_odds.py           #足球所有比赛赔率
 │         infer_soccer_model_input.py   #足球反查模型

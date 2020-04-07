@@ -1,4 +1,3 @@
-import json
 from abc import ABC
 #
 # import tornado
@@ -6,7 +5,7 @@ from abc import ABC
 from apps.base.base_handler import BaseHandler
 
 #反查 totoal goal
-from apps.quantization.constans import config
+from quantization.constants import config
 
 
 class InferSoccerTotalGoalsHandler(BaseHandler, ABC):

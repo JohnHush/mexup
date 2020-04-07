@@ -4,8 +4,8 @@ import tornado.web
 #
 # from apps.quantization.soccer import SoccerOdds
 
-from apps.quantization.match_odds import cal_match_odds
-from apps.quantization.infer_soccer_model_input import infer_soccer_model_input
+from quantization.match_odds import cal_match_odds
+from quantization.infer_soccer_model_input import infer_soccer_model_input
 
 #
 # import logging

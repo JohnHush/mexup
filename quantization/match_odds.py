@@ -1,6 +1,5 @@
-from apps.quantization.soccer_poisson import cal_soccer_odds
-from apps.quantization.constans import market_type, period, match_states
-
+from quantization.soccer_poisson import cal_soccer_odds
+from quantization.constants import market_type, period
 
 import numpy as np
 #输入参数
