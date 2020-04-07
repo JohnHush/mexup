@@ -10,6 +10,7 @@ pipeline {
             steps {
                 sh 'hostname'
                 sh 'pwd'
+                sh 'scp -o StrictHostKeyChecking=no /data/jenkins-slave/workspace/sport-quantization_master/* centos@10.8.24.66:/quantization/sport-quantization-master
     
             }
         }
