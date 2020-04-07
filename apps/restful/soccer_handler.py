@@ -28,8 +28,8 @@ class InferSoccerTotalGoalsHandler(BaseHandler, ABC):
         # para_input.set_value_ou(score, over_under_market, max_total_goals, parameter, eps)
 
         query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
-        over_under_market = [float(self.get_argument("ou_line")), float(self.get_argument("ou_home_odds")),
-                             float(self.get_argument("ou_away_odds"))]
+        over_under_market = [float(self.get_argument("ou_line")), float(self.get_argument("ou_over_odds")),
+                             float(self.get_argument("ou_under_odds"))]
         max_total_goals = 16
         #eps = float(self.get_argument("eps"))
         adjModel = int(self.get_argument("adj_mode"))
