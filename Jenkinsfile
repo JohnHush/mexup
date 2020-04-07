@@ -22,6 +22,7 @@ pipeline {
             }
             steps {
                 sh 'pwd'
+                sh 'ssh centos@10.8.24.66 \'bash -c "sh /quantization/sport-quantization-master/start_master.sh"\''
                 
             }
         }
