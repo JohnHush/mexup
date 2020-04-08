@@ -1,8 +1,8 @@
 # encoding: utf-8
 import os
 
-from tornado.options import define
 
+from tornado.options import define
 from configs import initialize_logging
 
 
@@ -14,6 +14,11 @@ define("host", default="localhost", help="Run server on a specific host")
 
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 LOG_BASE_PATH = os.path.join(ROOT_PATH, "logs")
+
+# the application settings
+MEDIA_PATH = os.path.join(ROOT_PATH, 'media')
+TEMPLATE_PATH = os.path.join(ROOT_PATH, 'templates')
+
 
 # 日志初始化
 initialize_logging(LOG_BASE_PATH)
@@ -27,11 +32,6 @@ if environment == "develop":
 else:
     print('开发环境...')
     DEBUG = True
-
-
-# the application settings
-MEDIA_PATH = os.path.join(ROOT_PATH, 'media')
-TEMPLATE_PATH = os.path.join(ROOT_PATH, 'templates')
 
 settings = {
     "debug": DEBUG,

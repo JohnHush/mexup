@@ -6,12 +6,11 @@ import settings
 
 from urls import urls_patterns as url_handlers
 from tornado.options import options
-
+import multiprocessing;
 
 class Application(tornado.web.Application):
     def __init__(self, handlers, **setting):
         tornado.web.Application.__init__(self, handlers, **setting)
-
 
 
 application = Application(url_handlers, **settings.settings)
@@ -24,7 +23,7 @@ def main():
 
         http_server = tornado.httpserver.HTTPServer(application)
         http_server.bind(options.port)
-        http_server.start(7)
+        http_server.start(multiprocessing.cpu_count())
 
         tornado.ioloop.IOLoop.current().start()
     except KeyboardInterrupt:
