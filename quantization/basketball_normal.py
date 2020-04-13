@@ -69,14 +69,14 @@ class cal_basketball_odds(object):
         # 净大小球线
         net_line = line - self.score_sum
         if math.ceil(net_line)-net_line == 0.5:
-            under_prob = round(norm(loc=self.sup, scale=self.sigma).cdf(net_line), 5)
+            under_prob = round(norm(loc=self.ttg, scale=self.sigma).cdf(net_line), 5)
             over_prob = 1- under_prob
         elif math.ceil(net_line)-net_line == 0:
-            over_prob_1 = 1- round(norm(loc=self.sup, scale=self.sigma).cdf(net_line + 0.5), 5)
-            under_prob_1 = round(norm(loc=self.sup, scale=self.sigma).cdf(net_line - 0.5), 5)
+            over_prob_1 = 1- round(norm(loc=self.ttg, scale=self.sigma).cdf(net_line + 0.5), 5)
+            under_prob_1 = round(norm(loc=self.ttg, scale=self.sigma).cdf(net_line - 0.5), 5)
             over_prob = over_prob_1 / (over_prob_1 + under_prob_1)
             under_prob = under_prob_1 / (over_prob_1 + under_prob_1)
-        return {selection_type.HOME: round(over_prob, 5), selection_type.AWAY: round(under_prob, 5)}
+        return {selection_type.OVER: round(over_prob, 5), selection_type.UNDER: round(under_prob, 5)}
 
     #输出三项盘概率
     def had(self):
@@ -89,8 +89,7 @@ class cal_basketball_odds(object):
     def match_winner(self):
         return self.asian_handicap(-0.5)
 
-
 # bk_odds = cal_basketball_odds()
-# bk_odds.set_value([0.5, 175.5], [5, 0], [11])
+# bk_odds.set_value([0.5, 175.5], [10, 11], [11])
 #
-# print(bk_odds.had())
+# print(bk_odds.asian_handicap(-0.5))
