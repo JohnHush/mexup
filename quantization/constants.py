@@ -55,6 +55,67 @@ class market_type( Enum ):
     # 足球客队单双
     SOCCER_AWAY_ODD_EVEN=1083
 
+
+    # 篮球胜平负（常规时间）
+    BASKETBALL_3WAY = 3001 # "Basketball3Way", Arrays.asList(SelectionType.HOME, SelectionType.DRAW, SelectionType.AWAY), "3Way"
+    # 篮球让分
+    BASKETBALL_HANDICAP = 3002 # "BasketballHandicap", Arrays.asList(SelectionType.HOME, SelectionType.AWAY), "Handicap"),
+    # 篮球总得分
+    BASKETBALL_TOTALS = 3003 # "BasketballTotals", Arrays.asList(SelectionType.OVER, SelectionType.UNDER), "Totals"),
+    # 篮球胜负（包括加时）
+    BASKETBALL_2WAY = 3004 # "Basketball2Way", Arrays.asList(SelectionType.HOME, SelectionType.AWAY), "2Way"),
+    # 篮球得分单双
+    BASKETBALL_ODD_EVEN = 3005 # "BasketballOddEven", Arrays.asList(SelectionType.ODD, SelectionType.EVEN), "OddEven"),
+    # 篮球欧盘让分
+    BASKETBALL_EUROPEAN_HANDICAP =3006 # "BasketballEuropeanHandicap", Arrays.asList = SelectionType.HOME, SelectionType.AWAY), "EuropeanHandicap"),
+    #篮球独赢分数范围（包括加时）
+    BASKETBALL_WINNING_MARGINS = 3007 # "BasketballWinningMargins", null, "WinningMargins"),
+    #篮球第一个得到X分的球队
+    BASKETBALL_1ST_TO_X_POINTS = 3008 # "Basketball1stToXPoints", Collections.singletonList = SelectionType.YES), "1stToXPoints"),
+    BASKETBALL_TOTAL_AAMS = 3009 # "BasketballTotalAAMS", null, "TotalAAMS"),
+    #篮球NBA总分范围（不包括加时）
+    BASKETBALL_TOTAL_MARGINS_NBA_EXC_LOT = 3010 # "BasketballTotalMarginsNBAExclOT", Collections.singletonList = SelectionType.YES), "TotalMarginsNBAExclOT"),
+    #篮球非NBA总分范围（不包括加时）
+    BASKETBALL_TOTAL_MARGINS_NONE_NBA_EXC_LOT = 3011 # "BasketballTotalMarginsNonNBAExclOT", Collections.singletonList = SelectionType.YES), "TotalMarginsNonNBAExclOT"),
+    #篮球主队总分大小
+    BASKETBALL_TOTALS_HOME_TEAM = 3012 # "BasketballTotalsHomeTeam", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "TotalsHomeTeam"),
+    #篮球客队总分大小
+    BASKETBALL_TOTALS_AWAY_TEAM = 3013 # "BasketballTotalsHomeTeam", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "TotalsHomeTeam"),
+    #篮球独赢和大小（包括加时）
+    BASKETBALL_MATCH_BET_AND_TOTALS_INC_LOT = 3014 # "BasketballMatchbetAndTotalsInclOT", null, "MatchbetAndTotalsInclOT"),
+    #篮球会有加时
+    BASKETBALL_WILL_THERE_BE_AN_OVERTIME = 3015 # "BasketballWillThereBeAnOvertime", Collections.singletonList = SelectionType.YES), "WillThereBeAnOvertime"),
+    #篮球分数最高的一节（不包括加时）
+    BASKETBALL_HIGHEST_SCORING_QUARTER = 3016 # "BasketballHighestScoringQuarter", Collections.singletonList = SelectionType.YES), "HighestScoringQuarter"),
+    #篮球上下半场胜平负
+    BASKETBALL_HAL_TIME_FULL_TIME = 3017 # "BasketballHaltimeFulltime", Collections.singletonList = SelectionType.YES), "HaltimeFulltime"),
+    BASKETBALL_US_TOTAL = 3018 # "BasketballUSTotal", null, "USTotal"),
+    BASKETBALL_US_SPREAD = 3019 # "BasketballUSSpread", null, "USSpread"),
+    #篮球平局退款
+    BASKETBALL_DRAW_NO_BET = 3020 # "BasketballDrawNoBet", Arrays.asList = SelectionType.HOME, SelectionType.AWAY), "DrawNoBet"),
+    BASKETBALL_X_TH_QUARTER_COMPETITOR1_TOTAL = 3021 # "BasketballXthQuarterCompetitor1Total", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "XthQuarterCompetitor1Total"),
+    #主队总得分单双
+    BASKETBALL_TEAM1_TOTAL_ODD_EVEN = 3022 # "BasketballTeam1TotalOddEven", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "Team1TotalOddEven"),
+    #客队总得分单双
+    BASKETBALL_TEAM2_TOTAL_ODD_EVEN = 3023 # "BasketballTeam2TotalOddEven", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "Team2TotalOddEven"),
+    #主队总得分尾数
+    BASKETBALL_TEAM1_TOTAL_LAST_DIGIT = 3024 # "BasketballTeam1TotalLastDigit", Collections.singletonList = SelectionType.YES), "Team1TotalLastDigit"),
+    #篮球客队总得分尾数
+    BASKETBALL_TEAM2_TOTAL_LAST_DIGIT = 3025 # "BasketballTeam2TotalLastDigit", Collections.singletonList = SelectionType.YES), "Team2TotalLastDigit"),
+    #篮球全场大小（包含精确）
+    BASKETBALL_TOTALS_EXACT = 3026 # "BasketBallTotalsExact", Arrays.asList = SelectionType.OVER, SelectionType.UNDER, SelectionType.EXACT), "TotalsExact"),
+    #篮球全场大小（包含加時）
+    BASKETBALL_TOTALS_INCL_OVERTIME = 3027 # "BasketBallTotalsInclOvertime", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "TotalsInclOvertime"),
+    #篮球主队总分大小
+    BASKETBALLR_HOEM_TOTAL = 3028 # "BasketballrHoemTotal", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "HoemTotal"),
+    #篮球客队总分大小
+    BASKETBALL_AWAY_TOTAL = 3029 # "BasketballAwayTotal", Arrays.asList = SelectionType.OVER, SelectionType.UNDER), "AwayTotal"),
+    #籃球独赢（不包含加時）
+    BASKETBALL_HALF_WINNER = 3030 # "BasketballHalfWinner", Arrays.asList = SelectionType.HOME, SelectionType.AWAY), "HalfWinner"),
+    #篮球单双（包含加時）
+    BASKETBALL_ODD_EVEN_INCL_OVERTIME = 3032 # "BasketballOddEvenInclOvertime", Arrays.asList = SelectionType.ODD, SelectionType.EVEN), "OddEvenInclOvertime")
+
+
 #选型类型
 class selection_type( Enum ):
     #主队
@@ -118,7 +179,40 @@ class period( Enum ):
     # 足球加时
     SOCCER_EXTRA = 1013
 
-class match_states( Enum ):
+    # 篮球全场（包含加时）
+    BASKETBALL_FULL_TIME =3001 # "BasketballFullTime", "Full Time"),
+    # 常规时间
+    BASKETBALL_REGULAR_TIME = 3002 # "BasketBallRegularTime", "Regular Time"),
+    # 蓝球上半场
+    BASKETBALL_FIRST_HALF = 3003 # "BasketballFirstHalf", "First Half"),
+    #篮球下半场
+    BASKETBALL_SECOND_HALF = 3004 # "BasketballSecondHalf", "Second Half"),
+    #篮球第一节
+    BASKETBALL_FIRST_QUARTER = 3005 # "BasketballFirstQuarter", "First Quarter"),
+    #篮球第二节
+    BASKETBALL_SECOND_QUARTER = 3006 # "BasketballSecondQuarter", "Second Quarter"),
+    #篮球第三节
+    BASKETBALL_THIRD_QUARTER = 3007 # "BasketballThirdQuarter", "Third Quarter"),
+    #篮球第四节
+    BASKETBALL_FOURTH_QUARTER = 3008 # "BasketballFourthQuarter", "Fourth Quarter"),
+    #篮球第一个加时
+    BASKETBALL_FIRST_OVERTIME = 3009 # "BasketballFirstOvertime", "First Overtime"),
+    #篮球第二个加时
+    BASKETBALL_SECOND_OVERTIME = 3010 # "BasketballSecondOvertime", "Second Overtime"),
+    #篮球第三个加时
+    BASKETBALL_THIRD_OVERTIME = 3012 # "BasketballThirdOvertime", "Third Overtime"),
+    #篮球第四个加时
+    BASKETBALL_FOURTH_OVERTIME = 3013 # "BasketballFourthOvertime", "Fourth Overtime"),
+    #篮球第五个加时
+    BASKETBALL_FIFTH_OVERTIME = 3014 # "BasketballFifthOvertime", "Fifth Overtime"),
+    #篮球第六个加时
+    BASKETBALL_SIXTH_OVERTIME = 3015 # "BasketballSixthOvertime", "Sixth Overtime"),
+    #篮球第七个加时
+    BASKETBALL_SEVENTH_OVERTIME = 3016 # "BasketballSeventhOvertime", "Seventh Overtime"),
+    #篮球第八个加时
+    BASKETBALL_EIGHTH_OVERTIME = 3017 # "BasketballEighthOvertime", "Eighth Overtime");
+
+class match_states():
     # 已结束
     ENDED = 0
     # 推迟
