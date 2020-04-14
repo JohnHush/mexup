@@ -2,6 +2,7 @@ from scipy.stats import poisson
 import numpy as np
 from quantization.constants import selection_type
 import math
+from enum import Enum
 
 class DynamicOddsCal( object ):
     """
@@ -58,6 +59,25 @@ class DynamicOddsCal( object ):
                  selection_type.HOME_OR_AWAY:
                      round(self.tril_dict[-1+self.present_diff] + self.triu_dict[1+self.present_diff], 5 ) }
 
+    class AsianType( Enum ):
+        DIRECT = 1
+        NORMALIZE = 2
+        HOME_FIRST = 3
+        AWAY_FIRST = 4
+
+    @staticmethod
+    def _calculate_critical_line( line ):
+        mc = math.ceil(line) - line
+
+        if mc < 0.1 and mc > -0.1:
+            return line, DynamicOddsCal.AsianType.NORMALIZE
+        if mc < 0.6 and mc > 0.4:
+            return line, DynamicOddsCal.AsianType.DIRECT
+        if mc < 0.3 and mc > 0.2:
+            return math.ceil(line), DynamicOddsCal.AsianType.HOME_FIRST
+        if mc < 0.8 and mc > 0.7:
+            return math.floor(line), DynamicOddsCal.AsianType.AWAY_FIRST
+
     def asian_handicap(self, line):
         """
         line could be: { 0, N(+-)0.25, N(+-)0.5, N(+-)0.75  | N belongs to 0,1,2,3,...}
@@ -65,33 +85,21 @@ class DynamicOddsCal( object ):
         1st get the odds for every bet, its return expectation should be 1 if investing 1
         2nd calculate the margin according to the odds
         """
-        try:
-            after_decimal_str = str(line).split('.')[1]
-        except:
-            after_decimal_str = '0'
+        l , t = DynamicOddsCal._calculate_critical_line( line )
 
-        if after_decimal_str == '0':
+        if t == DynamicOddsCal.AsianType.NORMALIZE:
             home_margin = self.tril_dict[ -1 + int(line) ]
             away_margin = self.triu_dict[ 1  + int(line) ]
 
             home_margin, away_margin = home_margin / (home_margin + away_margin ),\
                                        away_margin / ( home_margin + away_margin )
-
-        elif ( after_decimal_str[:2] == '25' and line < 0. ) or \
-                ( after_decimal_str[:2] == '75' and line > 0.) :
-            # e.g. Home give 1.25 , line = -1.25
-            # e.g. Home take 1.75 , line = +1.75
-            c = math.ceil(line)
-            home_margin = self.tril_dict[c-1] / ( 1. - 0.5 * self.diag_dict[c] )
+        elif t == DynamicOddsCal.AsianType.HOME_FIRST:
+            home_margin = self.tril_dict[l-1] / ( 1. - 0.5 * self.diag_dict[l] )
             away_margin = 1. - home_margin
-
-        elif (after_decimal_str[:2] == '75' and line < 0.) or \
-                (after_decimal_str[:2] == '25' and line > 0.):
-            c = math.floor(line)
-            away_margin = self.triu_dict[c+1] / ( 1. - 0.5 * self.diag_dict[c] )
+        elif t == DynamicOddsCal.AsianType.AWAY_FIRST:
+            away_margin = self.triu_dict[l+1] / ( 1. - 0.5 * self.diag_dict[l] )
             home_margin = 1. - away_margin
-
-        elif after_decimal_str[0] == '5':
+        elif t == DynamicOddsCal.AsianType.DIRECT:
             home_margin = self.tril_dict[ math.floor(line) ]
             away_margin = 1. - home_margin
         else:
