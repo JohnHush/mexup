@@ -157,7 +157,7 @@ class cal_soccer_odds(object):
     def correct_score(self,home_target_score,away_target_score):
         home_score_gap=home_target_score-self.home_score
         away_score_gap=away_target_score-self.away_score
-        return {selection_type.YES: (self.prob_matrix[home_score_gap,away_score_gap],5)}
+        return {selection_type.YES: round(self.prob_matrix[home_score_gap,away_score_gap],5)}
 
     #double change over under 用到的大小球计算公式，只有.5 的line
     def cal_over_under(self,prob_matrix_input,line):
@@ -198,7 +198,7 @@ class cal_soccer_odds(object):
         net_target_goals=target_goals-self.goal_sum
         slice_line=net_target_goals-rows+1
         target_goals_prob=np.diag(prob_matrix_total_goals,slice_line).sum()
-        return {selection_type.YES: (target_goals_prob,5)}
+        return {selection_type.YES: round(target_goals_prob,5)}
 
 #主队进球数over under
     def home_over_under(self,line):
