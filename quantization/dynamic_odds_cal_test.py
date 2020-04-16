@@ -5,13 +5,37 @@ import numpy as np
 
 class TestClass( object ):
     def test_had(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
-        # print(examp.had())
-        # print( doc.had() )
-        assert examp.had() == doc.had()
+        rho = [ -20, -2, -0.5, 0, 0.5, 1, 22 ]
+        score = [
+            [ 0, 0 ],
+            [ 1, 0 ],
+            [ 0, 1 ],
+            [ 5, 0 ],
+            [ 0, 3 ],
+            [ 0, 10],
+            [30, 0 ],
+            [20, 20]
+        ]
 
+        sup_ttg = [
+            [ 0.5, 4. ],
+            [ 0, 20 ],
+            [ -0.5, 1],
+            [ -2, 3 ],
+            [ -10, 20 ]
+        ]
+
+        for r in rho:
+            for s in score:
+                for st in sup_ttg:
+                    print( r, s, st )
+                    doc_v1 = cal_soccer_odds()
+                    doc_v1.set_value( st , s , [1,r] )
+                    doc_v2 = DynamicOddsCal( st, s, [1,r] )
+                    # print(examp.had())
+                    # print( doc.had() )
+                    assert doc_v1.had() == doc_v2.had()
+    '''
     def test_double_chance(self):
         examp=cal_soccer_odds()
         examp.set_value([0.5,3.7],[1,0],[1,-0.08])
@@ -159,3 +183,4 @@ class TestClass( object ):
         doc = DynamicOddsCal( [0.25,3.7],[1,0],[1,-0.08] )
 
         assert( doc.odd_even_ttg()  == examp.odd_even() )
+    '''

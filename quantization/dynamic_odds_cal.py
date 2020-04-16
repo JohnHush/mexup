@@ -32,29 +32,29 @@ class DynamicOddsCal( object ):
 
         self.home_goal_prob = np.array([ poisson.pmf( i, self.home_exp ) for i in range(self.dim) ])
         self.away_goal_prob = np.array([ poisson.pmf( i, self.away_exp ) for i in range(self.dim) ])
-        self.prob_matrix = np.outer( self.home_goal_prob, self.away_goal_prob )
+        self._M = np.outer( self.home_goal_prob, self.away_goal_prob )
 
         #TODO only support rho ajustment now
         if self.adj_params[0] == 1:
             rho = self.adj_params[1]
-            self.prob_matrix[0, 0] *= 1 - self.home_exp * self.away_exp * rho
-            self.prob_matrix[0, 1] *= 1 + self.home_exp * rho
-            self.prob_matrix[1, 0] *= 1 + self.away_exp * rho
-            self.prob_matrix[1, 1] *= 1 - rho
+            self._M[0, 0] *= 1 - self.home_exp * self.away_exp * rho
+            self._M[0, 1] *= 1 + self.home_exp * rho
+            self._M[1, 0] *= 1 + self.away_exp * rho
+            self._M[1, 1] *= 1 - rho
 
         self.tril_dict = {}
         self.triu_dict = {}
         self.diag_dict = {}
         for i in range( -self.dim+1, self.dim ):
-            self.tril_dict[i] = np.tril( self.prob_matrix, i ).sum()
-            self.triu_dict[i] = np.triu( self.prob_matrix, i ).sum()
-            self.diag_dict[i] = np.diag( self.prob_matrix, i ).sum()
+            self.tril_dict[i] = np.tril( self._M, i ).sum()
+            self.triu_dict[i] = np.triu( self._M, i ).sum()
+            self.diag_dict[i] = np.diag( self._M, i ).sum()
 
 
     def had(self):
-        return { selection_type.HOME: round(self.tril_dict[-1+self.present_diff], 5 ),
-                 selection_type.DRAW: round(self.diag_dict[self.present_diff], 5),
-                 selection_type.AWAY: round(self.triu_dict[1+self.present_diff], 5) }
+        return { selection_type.HOME: round(np.tril( self._M, -1+self.present_diff ).sum() , 5),
+                 selection_type.DRAW: round(np.diag( self._M, self.present_diff ).sum(), 5),
+                 selection_type.AWAY: round(np.triu( self._M,  1+self.present_diff).sum(), 5) }
 
     def double_chance(self):
         return { selection_type.HOME_OR_DRAW:
@@ -120,7 +120,7 @@ class DynamicOddsCal( object ):
         Awaywin <----> over
         """
         # rotate the probability matrix first
-        rotated_matrix = np.transpose( self.prob_matrix )
+        rotated_matrix = np.transpose( self._M )
         rotated_matrix = rotated_matrix[::-1]
 
         net_line = line - self.present_sum
@@ -261,10 +261,10 @@ class DynamicOddsCal( object ):
     def exact_score(self, home, away ):
         #TODO need to fix the outofrange problem , definitely a bug
         return {selection_type.YES:
-                    round(self.prob_matrix[ home - self.present_score[0], away - self.present_score[1]], 5)}
+                    round(self._M[ home - self.present_score[0], away - self.present_score[1]], 5)}
 
     def exact_ttg(self, ttg ):
-        rotated_matrix = np.transpose( self.prob_matrix )
+        rotated_matrix = np.transpose( self._M )
         rotated_matrix = rotated_matrix[::-1]
 
         net_ttg = ttg - self.present_sum
@@ -283,11 +283,11 @@ class DynamicOddsCal( object ):
 
     def winning_by_home(self, winning_by ):
         net_wb = winning_by - self.present_diff
-        return {selection_type.YES: round( np.diag( self.prob_matrix, -net_wb ).sum(), 5)}
+        return {selection_type.YES: round( np.diag( self._M, -net_wb ).sum(), 5)}
 
     def winning_by_away(self, winning_by ):
         net_wb = winning_by + self.present_diff
-        return {selection_type.YES: round( np.diag( self.prob_matrix, net_wb ).sum(), 5)}
+        return {selection_type.YES: round( np.diag( self._M, net_wb ).sum(), 5)}
 
     def both_scored(self):
         pos_prob = self.over_under_home(0.5)[ selection_type.OVER ] * \
@@ -307,14 +307,14 @@ class DynamicOddsCal( object ):
             for j in range( self.dim ):
                 if flag:
                     if (i+j)%2 == 0:
-                        even_prob += self.prob_matrix[ i,j ]
+                        even_prob += self._M[ i,j ]
                     else:
-                        odd_prob  += self.prob_matrix[ i,j ]
+                        odd_prob  += self._M[ i,j ]
                 else:
                     if (i+j)%2 == 1:
-                        even_prob += self.prob_matrix[ i,j ]
+                        even_prob += self._M[ i,j ]
                     else:
-                        odd_prob  += self.prob_matrix[ i,j ]
+                        odd_prob  += self._M[ i,j ]
 
         return { selection_type.ODD:  round(odd_prob, 5),
                  selection_type.EVEN: round(even_prob, 5) }
