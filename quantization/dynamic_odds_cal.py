@@ -9,17 +9,24 @@ class DynamicOddsCal( object ):
     calculate odds in different games
     according to the change of present scores
     """
-    def __init__(self, sup_ttg , present_score, adj_params ):
-        self.sup_tgg = sup_ttg
+    def __init__(self, sup_ttg , present_score, adj_params , dim=16 ):
+        self.sup_ttg = sup_ttg
         self.present_score = present_score
         self.adj_params = adj_params
-        self.dim = 16
-        self._refresh()
+        self.dim = dim
         self._calculate_all()
 
-    def _refresh(self):
-        self.home_exp = (self.sup_tgg[1] + self.sup_tgg[0]) / 2.
-        self.away_exp = (self.sup_tgg[1] - self.sup_tgg[0]) / 2.
+    def refresh(self, **kwargs ):
+        self.sup_ttg = kwargs.get( 'sup_ttg', self.sup_ttg )
+        self.present_score  = kwargs.get( 'present_socre', self.present_score )
+        self.adj_params = kwargs.get( 'adj_params', self.adj_params )
+        self.dim = kwargs.get( 'dim', self.dim )
+
+        self._calculate_all()
+
+    def _calculate_all(self):
+        self.home_exp = (self.sup_ttg[1] + self.sup_ttg[0]) / 2.
+        self.away_exp = (self.sup_ttg[1] - self.sup_ttg[0]) / 2.
         self.present_diff = self.present_score[0] - self.present_score[1]
         self.present_sum  = self.present_score[0] + self.present_score[1]
 
@@ -35,7 +42,6 @@ class DynamicOddsCal( object ):
             self.prob_matrix[1, 0] *= 1 + self.away_exp * rho
             self.prob_matrix[1, 1] *= 1 - rho
 
-    def _calculate_all(self):
         self.tril_dict = {}
         self.triu_dict = {}
         self.diag_dict = {}
@@ -44,7 +50,6 @@ class DynamicOddsCal( object ):
             self.triu_dict[i] = np.triu( self.prob_matrix, i ).sum()
             self.diag_dict[i] = np.diag( self.prob_matrix, i ).sum()
 
-        # calculate HAD margin
 
     def had(self):
         return { selection_type.HOME: round(self.tril_dict[-1+self.present_diff], 5 ),
