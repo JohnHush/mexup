@@ -32,7 +32,9 @@ class UrlData( Dataset ):
         if 'url' not in self.kwargs.keys():
             raise ValueError('must have url in keywords')
 
-        self.df = pd.read_csv( self.kwargs['url'] )
+        df_list = [ pd.read_csv( u ) for u in self.kwargs['url'] ]
+        self.df = pd.concat( df_list , sort=False )
+        # self.df = pd.read_csv( self.kwargs['url'] )
 
     def _encode_feature(self, home, away ):
         part1_feature = self.encoder.transform( [[ home, away ]] ).tolist()
@@ -97,9 +99,10 @@ class DixonColesModel( object ):
                      away_exp, # MLE param.
                      rho): # MLE param. calibration coefficient, degrades to Poisson Model when rho = 0
 
-        return np.log( DixonColesModel._calibration_matrix( home_goal, away_goal, home_exp, away_exp, rho )) +\
-            np.log( poisson.pmf( home_goal, home_exp ) ) +\
-            np.log( poisson.pmf( away_goal, away_exp ) )
+        return np.log( DixonColesModel._calibration_matrix( home_goal, away_goal, home_exp, away_exp, rho ) + \
+                       np.finfo(float).eps) + \
+               np.log( poisson.pmf( home_goal, home_exp ) + np.finfo(float).eps ) +\
+               np.log( poisson.pmf( away_goal, away_exp ) + np.finfo(float).eps )
 
     def _objective_values_sum( self, params ):
         train_features, train_y = self.ds.get_train_data()
@@ -109,8 +112,8 @@ class DixonColesModel( object ):
             X = train_features[isample]
             y = train_y[isample]
 
-            home_exp = np.exp( ( np.array(params[:40]) * np.array(X[0]) ).sum() + params[-1] )
-            away_exp = np.exp( ( np.array(params[:40]) * np.array(X[1]) ).sum() )
+            home_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[0]) ).sum() + params[-1] )
+            away_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[1]) ).sum() )
 
             obj = obj - DixonColesModel._likelihood( y[0], y[1] , home_exp, away_exp, params[-2] )
 
@@ -157,6 +160,12 @@ class DixonColesModel( object ):
 
         return united_prob_matrix
 
+    def infer_team_strength(self, team ):
+        # team stength is defined as TEAM_ATTACK - TEAM_DEFENCE
+        team_one_hot = self.ds.encoder.transform( [[team,team]] )[0]
+        team_one_hot[ self.dim : ] *= -1
+
+        return ( team_one_hot * self.model.x[:2*self.dim] ).sum()
 
     def infer_exp_rho(self, home, away ):
         home_exp = np.exp( ( self.ds.encoder.transform( [[home,away]] ) * \
@@ -166,129 +175,18 @@ class DixonColesModel( object ):
 
         return home_exp, away_exp, self.model.x[-2]
 
-class DixonColesModel_bk( object ):
-    '''
-    ref: Modelling Association Football Scores and Inefficiencies in the Football
-    betting Market, 1997, Mark Dixon and Stuart G. Coles
-
-    static model without weighting on march by time
-    '''
-    def __init__(self):
-        self.dataset = pd.read_csv('https://www.football-data.co.uk/mmz4281/1718/E0.csv')
-        self.dataset = self.dataset[['HomeTeam','AwayTeam','FTHG','FTAG']]
-        self.dataset = self.dataset.rename( columns={'FTHG': 'HomeGoals', 'FTAG': 'AwayGoals'} )
-
-        self.teams = np.sort( self.dataset['HomeTeam'].unique() )
-        self.team_number = len( self.teams )
-        self.attack_coe_team_index_dict = dict( zip( self.teams, range( self.team_number ) ) )
-        self.defend_coe_team_index_dict = dict( zip( self.teams, range( self.team_number , 2* self.team_number) ) )
-
-        print( self.dataset.head() )
-
-    def _preprocessing(self):
-        pass
-
-    @staticmethod
-    def _calibration_matrix( home_goal,
-                             away_goal,
-                             home_exp,
-                             away_exp,
-                             rho ):
-        if home_goal == 0 and away_goal == 0:
-            return 1. - home_exp * away_exp * rho
-        elif home_goal == 0 and away_goal == 1:
-            return 1. + home_exp * rho
-        elif home_goal == 1 and away_goal == 0:
-            return 1. + away_exp * rho
-        elif home_goal == 1 and away_goal == 1:
-            return 1. - rho
-        else:
-            return 1.
-
-    @staticmethod
-    def _likelihood( home_goal, # home goal in the match
-                     away_goal, # away goal in the match
-                     home_attack_coe, # MLE param.
-                     home_defend_coe, # MLE param.
-                     away_attack_coe, # MLE param.
-                     away_defend_coe, # MLE param.
-                     rho, # MLE param. calibration coefficient, degrades to Poisson Model when rho = 0
-                     gamma): # MLE param. home advantages, > 0
-
-        home_exp = np.exp( home_attack_coe + away_defend_coe + gamma )
-        away_exp = np.exp( away_attack_coe + home_defend_coe )
-
-        l = np.log( DixonColesModel._calibration_matrix( home_goal, away_goal, home_exp, away_exp, rho )) + \
-            np.log( poisson.pmf( home_goal, home_exp ) ) + \
-            np.log( poisson.pmf( away_goal, away_exp ) )
-        return l
-
-    def _objective_values_sum( self, params ):
-
-        # likelihood_list = [ DixonColesModel._likelihood( r.HomeGoals,
-        #                                                  r.AwayGoals,
-        #                                                  params[self.attack_coe_team_index_dict[r.HomeTeam]],
-        #                                                  params[self.defend_coe_team_index_dict[r.HomeTeam]],
-        #                                                  params[self.attack_coe_team_index_dict[r.AwayTeam]],
-        #                                                  params[self.defend_coe_team_index_dict[r.AwayTeam]],
-        #                                                  params[-2],
-        #                                                  params[-1]
-        #                                                  ) for r in self.dataset.itertuples() ]
-        # return -sum( likelihood_list )
-
-        obj = 0.
-        #
-        for r in self.dataset.itertuples():
-            obj = obj - DixonColesModel._likelihood( r.HomeGoals,
-                                                     r.AwayGoals,
-                                                     params[self.attack_coe_team_index_dict[r.HomeTeam]],
-                                                     params[self.defend_coe_team_index_dict[r.HomeTeam]],
-                                                     params[self.attack_coe_team_index_dict[r.AwayTeam]],
-                                                     params[self.defend_coe_team_index_dict[r.AwayTeam]],
-                                                     params[-2],
-                                                     params[-1])
-        return obj
-
-    def solve(self,
-              options = { 'disp': True, 'maxiter': 100},
-              constraints = [ { 'type': 'eq', 'fun': lambda x: sum(x[:20]) -20 } ],
-              **kwargs ):
-
-        init_vals = np.concatenate( ( np.random.uniform(0,1,self.team_number),
-                                      np.random.uniform(0,-1,self.team_number),
-                                      [0.],
-                                      [1.]) )
-
-        result = minimize( self._objective_values_sum,
-                           init_vals,
-                           options = options,
-                           constraints = constraints,
-                           **kwargs )
-
-        return result
-
 if __name__ == "__main__":
-    # kwargs = { 'constraints': {'type': 'eq', 'fun': lambda x: sum(x[:20]) - 20} }
-
-    ds = UrlData( url = './E0.csv' )
+    ds = UrlData( url = [ './1920_E0.csv' , './1819_E0.csv', './1718_E0.csv' ])
     dcm = DixonColesModel( ds )
 
-    dcm.load_model( './EnglandPremierLeague_1718_dcm.model' )
+    dcm.solve()
+    dcm.save_model( './EnglandPremierLeague_17181920_dcm.model')
+    # dcm.load_model( './EnglandPremierLeague_1718_dcm.model' )
     print( dcm.model.x )
 
     # home_exp, away_exp, rho = dcm.infer_exp_rho( 'Arsenal', 'Southampton' )
 
-    unite_matrix = dcm.infer_prob_matrix( 'Man City', 'Huddersfield' , 4 )
+    # unite_matrix = dcm.infer_prob_matrix( 'Man City', 'Huddersfield' , 4 )
 
     print( type(ds.encoder.categories_[0] ))
     print( (ds.encoder.categories_ ))
-
-
-    # print( home_exp )
-    # print( away_exp )
-    # print( rho )
-
-    # r = dcm.solve()
-    # print( r.x)
-
-    # dcm.save_model( './EnglandPremierLeague_1718_dcm.model' )
