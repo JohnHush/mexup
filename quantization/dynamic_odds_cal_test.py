@@ -2,128 +2,154 @@ import pytest
 from quantization.soccer_poisson import cal_soccer_odds
 from quantization.dynamic_odds_cal import DynamicOddsCal
 import numpy as np
+from quantization.constants import *
 
 class TestClass( object ):
+    rho = [ -0.1285, 10. ]
+    score = [
+        [ 0, 0 ],
+        [ 3, 2 ],
+        [ 1, 20 ],
+    ]
+
+    sup_ttg = [
+        [ 0.5, 2.74 ],
+        [ 0, 20 ],
+    ]
+
+    line = [ -100.5, -8.25, -7.75, -1.25, -2.5, -0.75, 0, 0.25, 0.75, 1.5, 2.5 , 4.5, 11.75, 100 ]
+
+    target_scores = [[3, 2],
+                     [0, 0],
+                     [10, 0],
+                     [20, 10]
+                     ]
+
     def test_had(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
-        # print(examp.had())
-        # print( doc.had() )
-        assert examp.had() == doc.had()
-
+        doc_v2 = DynamicOddsCal()
+        doc_v1 = cal_soccer_odds()
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    print( r, s, st )
+                    doc_v1.set_value( st , s , [1,r] )
+                    doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                    assert doc_v1.had() == doc_v2.had()
+    @pytest.mark.skip()
     def test_double_chance(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
-        # print(examp.double_chance())
-        # print( doc.double_chance() )
-        assert examp.double_chance() == doc.double_chance()
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    print( r, s, st )
+                    doc_v1 = cal_soccer_odds()
+                    doc_v1.set_value(st, s, [1, r])
+                    doc_v2 = DynamicOddsCal(st, s, [1, r])
+                    assert doc_v1.double_chance() == doc_v2.double_chance()
 
+    @pytest.mark.skip()
     def test_asian_handicap(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[2,2],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[2,2],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in TestClass.line:
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.asian_handicap( l ) == doc_v2.asian_handicap( l )
 
-        # l = [ -2.5, -2.25, -2, -1.75, -1.50, -1.25 , \
-        #       -1, -0.5, -0.25, 0, 0.25, 0.5, 1., 1.25 ]
-        l = [ -1.25 , 0, 1.25 ]
-
-        for line in l:
-            print( examp.asian_handicap(line))
-            assert( doc.asian_handicap(line) == examp.asian_handicap(line) )
-
+    @pytest.mark.skip()
     def test_over_under(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,1.7],[0,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,1.7],[0,0],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in TestClass.line:
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.over_under( l ) == doc_v2.over_under( l )
 
-        l = [ -2.5, -2.25, -2, -1.75, -1.50, -1.25 , \
-              -1, -0.5, -0.25, 0, 0.25, 0.5, 1., 1.25 , 1.5, 2.5, 3.5, 4.25, 3.75 ]
-
-        for line in l:
-            assert( doc.over_under(line) == examp.over_under(line) )
-
-        # print( doc.over_under( -0.25 ) )
-        # print( examp.over_under( -0.25 ))
-
+    @pytest.mark.skip()
     def test_over_under_home(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,1.7],[0,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,1.7],[0,0],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in TestClass.line:
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.home_over_under( l ) == doc_v2.over_under_home( l )
 
-        l = [ -2.5, -2.25, -2, -1.75, -1.50, -1.25 , \
-              -1, -0.5, -0.25, 0, 0.25, 0.5, 1., 1.25 , 1.5, 2.5, 3.5, 4.25, 3.75 ]
-
-        for line in l:
-            # print(doc.over_under_home(line))
-            # print(examp.home_over_under(line))
-            assert( doc.over_under_home(line) == examp.home_over_under(line) )
-
+    @pytest.mark.skip()
     def test_over_under_away(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,1.7],[1,2],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,1.7],[1,2],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in TestClass.line:
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.away_over_under( l ) == doc_v2.over_under_away( l )
 
-        l = [ -2.5, -2.25, -2, -1.75, -1.50, -1.25 , \
-              -1, -0.5, -0.25, 0, 0.25, 0.5, 1., 1.25 , 1.5, 2.5, 3.5, 4.25, 3.75 ]
-
-        for line in l:
-            # print(doc.over_under_away(line))
-            # print(examp.away_over_under(line))
-            assert( doc.over_under_away(line) == examp.away_over_under(line) )
-
+    @pytest.mark.skip()
     def test_exact_score(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for ts in TestClass.target_scores:
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        print( 'rho = %f, score = %f, %f , targets = %f, %f,  ssssss= %f' %(\
+                            r, s[0], s[1], ts[0], ts[1], doc_v2.exact_score(ts[0], ts[1])[selection_type.YES] ) )
 
-        # l = [ -2.5, -2.25, -2, -1.75, -1.50, -1.25 , \
-        #       -1, -0.5, -0.25, 0, 0.25, 0.5, 1., 1.25 ]
-
-        score = [ (1,0),
-                  (2,1),
-                  (0,1),
-                  (0,0),
-                  (3,2)]
-        for h, a  in score:
-            # print( doc.exact_score(h,a ))
-            # print( examp.correct_score(h,a))
-            assert( doc.exact_score(h, a ) == examp.correct_score(h, a ) )
-
+    @pytest.mark.skip()
     def test_exact_ttg(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in range( -20, 20 ):
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.exact_totals( l ) == doc_v2.exact_ttg( l )
 
-        l = list( range( -10, 10, 1 ) )
-        for line in l:
-            # print( doc.exact_ttg( line ))
-            # print( examp.exact_totals(line))
-            assert( doc.exact_ttg( line ) == examp.exact_totals( line ) )
-
+    @pytest.mark.skip()
     def test_exact_ttg_home(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in range( -20, 20 ):
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.home_exact_totals( l ) == doc_v2.exact_ttg_home( l )
 
-        l = list( range( -10, 10, 1 ) )
-        for line in l:
-            # print( doc.exact_ttg( line ))
-            # print( examp.exact_totals(line))
-            assert( doc.exact_ttg_home( line ) == examp.home_exact_totals( line ) )
-
+    @pytest.mark.skip()
     def test_exact_ttg_away(self):
-        examp=cal_soccer_odds()
-        examp.set_value([0.5,3.7],[1,0],[1,-0.08])
-        doc = DynamicOddsCal( [0.5,3.7],[1,0],[1,-0.08] )
+        doc_v1 = cal_soccer_odds()
+        doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])
+        for r in TestClass.rho:
+            for s in TestClass.score:
+                for st in TestClass.sup_ttg:
+                    for l in range( -20, 20 ):
+                        print( r, s, st , l)
+                        doc_v1.set_value(st, s, [1, r])
+                        doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
+                        assert doc_v1.away_exact_totals( l ) == doc_v2.exact_ttg_away( l )
 
-        l = list( range( -10, 10, 1 ) )
-        for line in l:
-            # print( doc.exact_ttg( line ))
-            # print( examp.exact_totals(line))
-            assert( doc.exact_ttg_away( line ) == examp.away_exact_totals( line ) )
-
+    '''
     def test_home_winning_by(self):
         examp=cal_soccer_odds()
         examp.set_value([0.5,3.7],[1,3],[1,-0.08])
@@ -159,3 +185,4 @@ class TestClass( object ):
         doc = DynamicOddsCal( [0.25,3.7],[1,0],[1,-0.08] )
 
         assert( doc.odd_even_ttg()  == examp.odd_even() )
+    '''

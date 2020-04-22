@@ -9,55 +9,57 @@ class DynamicOddsCal( object ):
     calculate odds in different games
     according to the change of present scores
     """
-    def __init__(self, sup_ttg , present_score, adj_params ):
-        self.sup_tgg = sup_ttg
-        self.present_score = present_score
-        self.adj_params = adj_params
-        self.dim = 16
-        self._refresh()
+    def __init__(self, **kwargs ):
+        self.sup_ttg = kwargs.get( 'sup_ttg', [0,0] )
+        self.present_score  = kwargs.get( 'present_socre', [0,0] )
+        self.adj_params = kwargs.get( 'adj_params', [1,-0.1285] )
+
+        # set a self-adopted dimention if dim not set manually
+        self.home_exp = (self.sup_ttg[1] + self.sup_ttg[0]) / 2.
+        self.away_exp = (self.sup_ttg[1] - self.sup_ttg[0]) / 2.
+        self.dim = max( int(self.home_exp), int(self.away_exp) ) + 18
+
         self._calculate_all()
 
-    def _refresh(self):
-        self.home_exp = (self.sup_tgg[1] + self.sup_tgg[0]) / 2.
-        self.away_exp = (self.sup_tgg[1] - self.sup_tgg[0]) / 2.
-        self.present_diff = self.present_score[0] - self.present_score[1]
-        self.present_sum  = self.present_score[0] + self.present_score[1]
+    def refresh(self, **kwargs ):
+        self.sup_ttg = kwargs.get( 'sup_ttg', self.sup_ttg )
+        self.present_score  = kwargs.get( 'present_socre', self.present_score )
+        self.adj_params = kwargs.get( 'adj_params', self.adj_params )
+
+        self.home_exp = (self.sup_ttg[1] + self.sup_ttg[0]) / 2.
+        self.away_exp = (self.sup_ttg[1] - self.sup_ttg[0]) / 2.
+        self.dim = max( int(self.home_exp), int(self.away_exp) ) + 18
+
+        self._calculate_all()
+
+    def _calculate_all(self):
+        self._sgap = self.present_score[0] - self.present_score[1]
+        self._ssum = self.present_score[0] + self.present_score[1]
 
         self.home_goal_prob = np.array([ poisson.pmf( i, self.home_exp ) for i in range(self.dim) ])
         self.away_goal_prob = np.array([ poisson.pmf( i, self.away_exp ) for i in range(self.dim) ])
-        self.prob_matrix = np.outer( self.home_goal_prob, self.away_goal_prob )
+        self._M = np.outer( self.home_goal_prob, self.away_goal_prob )
 
         #TODO only support rho ajustment now
         if self.adj_params[0] == 1:
             rho = self.adj_params[1]
-            self.prob_matrix[0, 0] *= 1 - self.home_exp * self.away_exp * rho
-            self.prob_matrix[0, 1] *= 1 + self.home_exp * rho
-            self.prob_matrix[1, 0] *= 1 + self.away_exp * rho
-            self.prob_matrix[1, 1] *= 1 - rho
-
-    def _calculate_all(self):
-        self.tril_dict = {}
-        self.triu_dict = {}
-        self.diag_dict = {}
-        for i in range( -self.dim+1, self.dim ):
-            self.tril_dict[i] = np.tril( self.prob_matrix, i ).sum()
-            self.triu_dict[i] = np.triu( self.prob_matrix, i ).sum()
-            self.diag_dict[i] = np.diag( self.prob_matrix, i ).sum()
-
-        # calculate HAD margin
+            self._M[0, 0] *= 1 - self.home_exp * self.away_exp * rho
+            self._M[0, 1] *= 1 + self.home_exp * rho
+            self._M[1, 0] *= 1 + self.away_exp * rho
+            self._M[1, 1] *= 1 - rho
 
     def had(self):
-        return { selection_type.HOME: round(self.tril_dict[-1+self.present_diff], 5 ),
-                 selection_type.DRAW: round(self.diag_dict[self.present_diff], 5),
-                 selection_type.AWAY: round(self.triu_dict[1+self.present_diff], 5) }
+        return { selection_type.HOME: round(np.tril( self._M, -1+self._sgap ).sum() , 5),
+                 selection_type.DRAW: round(np.diag( self._M, self._sgap ).sum(), 5),
+                 selection_type.AWAY: round(np.triu( self._M,  1+self._sgap).sum(), 5) }
 
     def double_chance(self):
         return { selection_type.HOME_OR_DRAW:
-                     round(self.tril_dict[-1+self.present_diff] + self.diag_dict[self.present_diff], 5 ),
+                     round( np.tril( self._M, self._sgap-1 ).sum() + np.diag( self._M, self._sgap ).sum(), 5),
                  selection_type.AWAY_OR_DRAW:
-                     round(self.triu_dict[1+self.present_diff] + self.diag_dict[self.present_diff], 5 ),
+                     round( np.triu( self._M, self._sgap+1 ).sum() + np.diag( self._M, self._sgap ).sum(), 5),
                  selection_type.HOME_OR_AWAY:
-                     round(self.tril_dict[-1+self.present_diff] + self.triu_dict[1+self.present_diff], 5 ) }
+                     round( np.triu( self._M, self._sgap+1 ).sum() + np.tril( self._M, self._sgap-1 ).sum(), 5) }
 
     class AsianType( Enum ):
         DIRECT = 1
@@ -88,19 +90,19 @@ class DynamicOddsCal( object ):
         l , t = DynamicOddsCal._calculate_critical_line( line )
 
         if t == DynamicOddsCal.AsianType.NORMALIZE:
-            home_margin = self.tril_dict[ -1 + int(line) ]
-            away_margin = self.triu_dict[ 1  + int(line) ]
+            home_margin = np.tril( self._M, int(line)-1 ).sum()
+            away_margin = np.triu( self._M, int(line)+1 ).sum()
 
             home_margin, away_margin = home_margin / (home_margin + away_margin ),\
                                        away_margin / ( home_margin + away_margin )
         elif t == DynamicOddsCal.AsianType.DN_FIRST:
-            home_margin = self.tril_dict[l-1] / ( 1. - 0.5 * self.diag_dict[l] )
+            home_margin = np.tril( self._M, l-1 ).sum() / ( 1.- 0.5* np.diag(self._M, l).sum() )
             away_margin = 1. - home_margin
         elif t == DynamicOddsCal.AsianType.UP_FIRST:
-            away_margin = self.triu_dict[l+1] / ( 1. - 0.5 * self.diag_dict[l] )
+            away_margin = np.triu( self._M, l+1 ).sum() / ( 1.- 0.5* np.diag( self._M, l ).sum() )
             home_margin = 1. - away_margin
         elif t == DynamicOddsCal.AsianType.DIRECT:
-            home_margin = self.tril_dict[ math.floor(line) ]
+            home_margin = np.tril( self._M, math.floor(line) ).sum()
             away_margin = 1. - home_margin
         else:
             raise Exception
@@ -115,10 +117,10 @@ class DynamicOddsCal( object ):
         Awaywin <----> over
         """
         # rotate the probability matrix first
-        rotated_matrix = np.transpose( self.prob_matrix )
+        rotated_matrix = np.transpose( self._M )
         rotated_matrix = rotated_matrix[::-1]
 
-        net_line = line - self.present_sum
+        net_line = line - self._ssum
 
         if net_line <= -0.5:
             # definitely happen
@@ -180,6 +182,10 @@ class DynamicOddsCal( object ):
             return { selection_type.OVER:  round( 0. , 5 ),
                      selection_type.UNDER: round( 0. , 5 )}
 
+        if math.ceil(net_line) + 1 > self.dim -1 :
+            return { selection_type.OVER:  round( 0. , 5 ),
+                     selection_type.UNDER: round( 1. , 5 )}
+
         l, t = DynamicOddsCal._calculate_critical_line( net_line )
         # in this 1D case, the return l is useless
         # and t is just an indicator
@@ -226,6 +232,10 @@ class DynamicOddsCal( object ):
             return { selection_type.OVER:  round( 0. , 5 ),
                      selection_type.UNDER: round( 0. , 5 )}
 
+        if math.ceil(net_line) + 1 > self.dim -1 :
+            return { selection_type.OVER:  round( 0. , 5 ),
+                     selection_type.UNDER: round( 1. , 5 )}
+
         l, t = DynamicOddsCal._calculate_critical_line( net_line )
         # in this 1D case, the return l is useless
         # and t is just an indicator
@@ -254,35 +264,44 @@ class DynamicOddsCal( object ):
                  selection_type.UNDER: round( away_under_margin, 5)}
 
     def exact_score(self, home, away ):
-        #TODO need to fix the outofrange problem , definitely a bug
+        home_index = home - self.present_score[0]
+        away_index = away - self.present_score[1]
+
+        if home_index < 0 or home_index >= self.dim or away_index < 0 or away_index >= self.dim:
+            return { selection_type.YES: round( 0., 5 ) }
+
         return {selection_type.YES:
-                    round(self.prob_matrix[ home - self.present_score[0], away - self.present_score[1]], 5)}
+                    round(self._M[ home_index, away_index ], 5)}
 
     def exact_ttg(self, ttg ):
-        rotated_matrix = np.transpose( self.prob_matrix )
+        rotated_matrix = np.transpose( self._M )
         rotated_matrix = rotated_matrix[::-1]
 
-        net_ttg = ttg - self.present_sum
+        net_ttg = ttg - self._ssum
         return {selection_type.YES:
                     round(np.diag( rotated_matrix, net_ttg - (self.dim -1) ).sum(), 5)}
 
     def exact_ttg_home(self, ttg ):
-        #TODO need to fix the outofrange problem , definitely a bug
         net_ttg = ttg - self.present_score[0]
+        if net_ttg < 0 or net_ttg >= self.dim:
+            return { selection_type.YES : round( 0., 5 ) }
+
         return {selection_type.YES: round( self.home_goal_prob[net_ttg], 5)}
 
     def exact_ttg_away(self, ttg ):
-        #TODO need to fix the outofrange problem , definitely a bug
         net_ttg = ttg - self.present_score[1]
+        if net_ttg < 0 or net_ttg >= self.dim:
+            return { selection_type.YES : round( 0., 5 ) }
+
         return {selection_type.YES: round( self.away_goal_prob[net_ttg], 5)}
 
     def winning_by_home(self, winning_by ):
-        net_wb = winning_by - self.present_diff
-        return {selection_type.YES: round( np.diag( self.prob_matrix, -net_wb ).sum(), 5)}
+        net_wb = winning_by - self._sgap
+        return {selection_type.YES: round( np.diag( self._M, -net_wb ).sum(), 5)}
 
     def winning_by_away(self, winning_by ):
-        net_wb = winning_by + self.present_diff
-        return {selection_type.YES: round( np.diag( self.prob_matrix, net_wb ).sum(), 5)}
+        net_wb = winning_by + self._sgap
+        return {selection_type.YES: round( np.diag( self._M, net_wb ).sum(), 5)}
 
     def both_scored(self):
         pos_prob = self.over_under_home(0.5)[ selection_type.OVER ] * \
@@ -296,20 +315,20 @@ class DynamicOddsCal( object ):
         odd_prob  = 0.
         even_prob = 0.
 
-        flag = ( self.present_sum%2 == 0 )
+        flag = ( self._ssum%2 == 0 )
 
         for i in range( self.dim ):
             for j in range( self.dim ):
                 if flag:
                     if (i+j)%2 == 0:
-                        even_prob += self.prob_matrix[ i,j ]
+                        even_prob += self._M[ i,j ]
                     else:
-                        odd_prob  += self.prob_matrix[ i,j ]
+                        odd_prob  += self._M[ i,j ]
                 else:
                     if (i+j)%2 == 1:
-                        even_prob += self.prob_matrix[ i,j ]
+                        even_prob += self._M[ i,j ]
                     else:
-                        odd_prob  += self.prob_matrix[ i,j ]
+                        odd_prob  += self._M[ i,j ]
 
         return { selection_type.ODD:  round(odd_prob, 5),
                  selection_type.EVEN: round(even_prob, 5) }
