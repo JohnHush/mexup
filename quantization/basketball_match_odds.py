@@ -3,34 +3,30 @@
 from quantization.constants import selection_type
 import numpy as np
 from quantization.basketball_normal import cal_basketball_odds
-from quantization.constants import period
+from quantization.constants import period, market_type
+import math
 
 
 # score = [0,0]
-# asian_handicap_market_now_draw=[-0.5,1.84,1.99]
-# over_under_market=[2.5,1.84,1.99]
 # parameter=[sigma, decay]
 # clock = [current_stage, current_sec, exp_total_sec]
 # match_format = [period_sec, total_period]
 # eps=0.001
 
 
-class infer_basketball_model_input(object):
+class cal_basketball_match_odds(object):
     def __init__(self):
         self.odds_tool_reg_time = cal_basketball_odds()
-        self.odds_tool_full_time_with_ot = cal_basketball_odds()
-        self.odds_tool_1st_half = cal_basketball_odds()
-        self.odds_tool_2nd_half = cal_basketball_odds()
-        self.odds_tool_1st_quarter = cal_basketball_odds()
-        self.odds_tool_2nd_quarter = cal_basketball_odds()
-        self.odds_tool_3rd_quarter = cal_basketball_odds()
-        self.odds_tool_4th_quarter = cal_basketball_odds()
+        self.odds_tool_full_time = cal_basketball_odds()
 
-    def set_value(self, mu, score, clock, match_format, parameter, eps):
+    # self.stage 0-赛前，1-第一节 ，2-第二节 ，3-第三节，4-第四节, 5-加时，6-结束
+    def set_value(self, mu, score, clock, match_format, parameter):
         self.sup = mu[0]
         self.tts = mu[1]
         self.score = score
-        self.current_stage = clock[0]
+        self.score_diff = score[0] - score[1]
+        self.total_score = score[0] + score[1]
+        self.stage = clock[0]
         self.current_sec = clock[1]
         self.exp_total_sec = clock[2]
         self.total_period = match_format[1]
@@ -40,24 +36,50 @@ class infer_basketball_model_input(object):
         self.decay = parameter[1]
         self.eps = eps
 
-        if self.total_period = 4:
-
-        if self.current_sec <
-
+        self.sup_now = self.sup * ((self.sec_left / self.exp_total_sec) ** self.decay)
+        self.tts_now = self.tts * ((self.sec_left / self.exp_total_sec) ** self.decay)
 
     def odds_output(self):
 
-
         odds = {}
-        if self.stage in [4, 6]:
-            self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
-            self.odds_tool_1st_half.set_value(self.mu_first_half_now, self.half_time_score, self.parameter)
-            self.odds_tool_2nd_half.set_value(self.mu_second_half_now, self.second_half_socore, self.parameter)
-
-            odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
-            odds[period.SOCCER_FIRST_HALF] = self.cal_first_half_odds()
-        elif self.stage in [7, 8]:
-            self.odds_tool_full_time.set_value(self.mu_full_time_now, self.full_time_score, self.parameter)
-            self.odds_tool_2nd_half.set_value(self.mu_second_half_now, self.second_half_socore, self.parameter)
-            odds[period.SOCCER_FULL_TIME] = self.cal_full_time_odds()
+        self.odds_tool_full_time.set_value([self.sup_now, self.tts_now], self.score, [self.sigma_now, self.decay])
+        odds[period.BASKETBALL_FULL_TIME] = self.cal_full_time_odds()
         return odds
+
+    def cal_full_time_odds(self):
+        full_time_odds = {}
+        full_time_odds[market_type.BASKETBALL_2WAY] = self.odds_tool_full_time.match_winner()
+
+        ahc = {}
+        ahc_core_line = math.ceil(self.sup + self.score_diff)
+        ahc_line_list = np.arange(-ahc_core_line - 10, -ahc_core_line +10.5, 0.5)
+        for j in ahc_line_list:
+            ahc[str(j)] = self.odds_tool_full_time.asian_handicap_no_draw(j)
+        full_time_odds[market_type.BASKETBALL_HANDICAP] = ahc
+
+        over_under = {}
+        ou_core_line = math.ceil(self.tts + self.total_score)
+        ou_line_list = np.arange(ou_core_line - 10, ou_core_line +10.5, 0.5)
+        for j in ou_line_list:
+            over_under[str(j)] = self.odds_tool_full_time.over_under(j)
+        full_time_odds[market_type.BASKETBALL_TOTALS] = over_under
+        return full_time_odds
+
+
+
+# mu = [5.0, 199]
+# stage = 1
+# current_sec = 12*60
+# exp_total_sec = 48*60
+# period_sec = 12 * 60
+# total_period = 4
+# score = [0,0]
+# parameter=[10, 1.05]
+# clock = [1, current_sec, exp_total_sec]
+# match_format = [period_sec, total_period]
+# eps=0.001
+# bk_odds = cal_basketball_match_odds()
+# bk_odds.set_value( mu, score, clock, match_format, parameter)
+#
+#
+# print(bk_odds.odds_output())

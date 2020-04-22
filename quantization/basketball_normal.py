@@ -87,7 +87,7 @@ class cal_basketball_odds(object):
 
     #输出两项盘概率
     def match_winner(self):
-        return self.asian_handicap(-0.5)
+        return self.asian_handicap_no_draw(-0.5)
 
 # bk_odds = cal_basketball_odds()
 # bk_odds.set_value([0.5, 175.5], [10, 11], [11])

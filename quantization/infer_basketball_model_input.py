@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-from quantization.constants import selection_type
+from quantization.constants import selection_type, config
 import numpy as np
 from quantization.basketball_normal import cal_basketball_odds
 
@@ -17,8 +17,9 @@ from quantization.basketball_normal import cal_basketball_odds
 class infer_basketball_model_input(object):
     def __init__(self):
         self.odds_tool = cal_basketball_odds()
+        self.eps = config.infer_eps
 
-    def set_value_ahc(self, score, clock, match_format, asian_handicap_market_no_draw, total_score, parameter, eps):
+    def set_value_ahc(self, score, clock, match_format, asian_handicap_market_no_draw, total_score, parameter):
         self.score = score
         self.current_stage = clock[0]
         self.current_sec = clock[1]
@@ -29,9 +30,9 @@ class infer_basketball_model_input(object):
         self.decay = parameter[1]
         self.asian_handicap_market = asian_handicap_market_no_draw
         self.total_score = total_score
-        self.eps = eps
 
-    def set_value_ou(self, score, clock, match_format, over_under_market, max_total_score, parameter, eps):
+
+    def set_value_ou(self, score, clock, match_format, over_under_market, max_total_score, parameter):
         self.score = score
         self.current_stage = clock[0]
         self.current_sec = clock[1]
@@ -42,7 +43,6 @@ class infer_basketball_model_input(object):
         self.sigma_now = parameter[0]*np.sqrt(self.sec_left/self.total_reg_sec)
         self.decay = parameter[1]
         self.over_under_market = over_under_market
-        self.eps = eps
 
     def infer_total_score(self):
         # 反查total goals
