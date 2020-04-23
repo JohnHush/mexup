@@ -1,9 +1,80 @@
 import pytest
 from quantization.soccer_poisson import cal_soccer_odds
-from quantization.dynamic_odds_cal import DynamicOddsCal
+from quantization.dynamic_odds_cal import DynamicOddsCal, DynamicOddsCalBas
+from quantization.basketball_normal import cal_basketball_odds
 import numpy as np
 from quantization.constants import *
 
+class TestClass2( object ):
+    sup_ttg = [
+        [ 0.5, 175.5 ],
+        [ 0, 20 ],
+    ]
+    sigma = [ 11, 22, 5 ]
+
+    score = [
+        [ 10, 11 ],
+        [ 0, 0 ],
+        [ 200, 300 ],
+    ]
+
+    line = np.arange( -5, 5, 0.5 )
+
+    @pytest.mark.skip()
+    def test_ahc_no_draw(self):
+        doc_v1 = cal_basketball_odds()
+
+        doc_v2 = DynamicOddsCalBas()
+
+        for st in TestClass2.sup_ttg:
+            for ssggmm in TestClass2.sigma:
+                for s in TestClass2.score:
+                    for l in TestClass2.line:
+                        print( st, ssggmm, s )
+                        doc_v1.set_value( st , s, [ssggmm])
+                        doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
+                        assert ( doc_v1.asian_handicap_no_draw(l ) == doc_v2.ahc_no_draw(l))
+
+    @pytest.mark.skip()
+    def test_ahc_with_draw(self):
+        doc_v1 = cal_basketball_odds()
+        doc_v2 = DynamicOddsCalBas()
+
+        for st in TestClass2.sup_ttg:
+            for ssggmm in TestClass2.sigma:
+                for s in TestClass2.score:
+                    for l in TestClass2.line:
+                        print( st, ssggmm, s )
+                        doc_v1.set_value( st , s, [ssggmm])
+                        doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
+                        assert ( doc_v1.asian_handicap( l ) == doc_v2.ahc_with_draw(l))
+
+    @pytest.mark.skip()
+    def test_over_under(self):
+        doc_v1 = cal_basketball_odds()
+        doc_v2 = DynamicOddsCalBas()
+
+        line = np.arange( 0, 200, 0.5 )
+        for st in TestClass2.sup_ttg:
+            for ssggmm in TestClass2.sigma:
+                for s in TestClass2.score:
+                    for l in line:
+                        print( st, ssggmm, s )
+                        doc_v1.set_value( st , s, [ssggmm])
+                        doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
+                        assert ( doc_v1.over_under( l ) == doc_v2.over_under(l))
+
+    def test_had(self):
+        doc_v1 = cal_basketball_odds()
+        doc_v2 = DynamicOddsCalBas()
+
+        for st in TestClass2.sup_ttg:
+            for ssggmm in TestClass2.sigma:
+                for s in TestClass2.score:
+                    print( st, ssggmm, s )
+                    doc_v1.set_value( st , s, [ssggmm])
+                    doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
+                    assert ( doc_v1.had( ) == doc_v2.had() )
 class TestClass( object ):
     rho = [ -0.1285, 10. ]
     score = [
@@ -25,6 +96,7 @@ class TestClass( object ):
                      [20, 10]
                      ]
 
+    @pytest.mark.skip()
     def test_had(self):
         doc_v2 = DynamicOddsCal()
         doc_v1 = cal_soccer_odds()
