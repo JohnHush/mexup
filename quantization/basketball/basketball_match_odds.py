@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
-from quantization.constants import selection_type
 import numpy as np
-from quantization.basketball_normal import cal_basketball_odds
+from quantization.basketball.basketball_normal import cal_basketball_odds
 from quantization.constants import period, market_type
 import math
 
@@ -34,7 +33,7 @@ class cal_basketball_match_odds(object):
         self.sec_left = self.exp_total_sec - self.current_sec
         self.sigma_now = parameter[0]*np.sqrt(self.sec_left/self.total_reg_sec)
         self.decay = parameter[1]
-        self.eps = eps
+#        self.eps = eps
 
         self.sup_now = self.sup * ((self.sec_left / self.exp_total_sec) ** self.decay)
         self.tts_now = self.tts * ((self.sec_left / self.exp_total_sec) ** self.decay)

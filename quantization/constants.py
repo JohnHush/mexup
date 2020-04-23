@@ -1,11 +1,11 @@
 #配置类
-from enum import Enum
-class config( Enum ):
+
+class config(  ):
     #反查精度
     infer_eps = 0.001
 
 #市场类型
-class market_type( Enum ):
+class market_type(  ):
     # 足球亚盘让球
     SOCCER_ASIAN_HANDICAP=1001
     # 足球让球
@@ -117,7 +117,7 @@ class market_type( Enum ):
 
 
 #选型类型
-class selection_type( Enum ):
+class selection_type(  ):
     #主队
     HOME=1
     #客队
@@ -151,7 +151,7 @@ class selection_type( Enum ):
     #客胜
     AWAY_WIN=17
 
-class period( Enum ):
+class period(  ):
     # 足球全场
     SOCCER_FULL_TIME = 1001
     # 足球上半场
