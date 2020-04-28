@@ -1,21 +1,25 @@
 from abc import ABC
+from concurrent.futures.thread import ThreadPoolExecutor
+
+import tornado
+from tornado import gen
+from tornado.concurrent import run_on_executor
 
 from apps.base.base_handler import BaseHandler
 
 #反查 totoal goal
 from quantization.basketball.basketball_match_odds import cal_basketball_match_odds
-from quantization.constants import config
 
 
 class BasketballInferTotalGoalsHandler(BaseHandler, ABC):
-    def get(self):
-        inferBasketball = self.getInferBasketball();
-        self.setValue(inferBasketball)
 
-        self.write({"code":0,"data":inferBasketball.infer_total_score()})
 
-    def setValue(self,inferBasketball):
+    @run_on_executor
+    def getData(self):
+        # 实例化
+        inferBasketball = self.getInferBasketball()
 
+        # 解析参数
         query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
         clock = [int(self.get_argument("current_stage")), int(self.get_argument("current_sec")), int(self.get_argument("exp_total_sec"))]
         match_format = [int(self.get_argument("period_sec")), int(self.get_argument("total_period"))]
@@ -23,20 +27,24 @@ class BasketballInferTotalGoalsHandler(BaseHandler, ABC):
                              float(self.get_argument("ou_under_odds"))]
 
         max_total_goals = 400
-
         parameter = [float(self.get_argument("sigma")), float(self.get_argument("decay"))]
 
+        #对象初始化
         inferBasketball.set_value_ou(query_score,clock,match_format,over_under_market,max_total_goals,parameter)
+
+        #计算
+        return inferBasketball.infer_total_score()
 
 #反查 supremacy
 class BasketballInferSupremacyHandler(BaseHandler, ABC):
-    def get(self):
-        inferBasketball = self.getInferBasketball();
-        self.setValue(inferBasketball)
-        self.write( {"code":0,"data":inferBasketball.infer_supremacy()} )
 
-    def setValue(self,inferBasketball):
 
+    @run_on_executor
+    def getData(self):
+        # 实例化
+        inferBasketball = self.getInferBasketball()
+
+        # 解析参数
         query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
         clock = [int(self.get_argument("current_stage")), int(self.get_argument("current_sec")),
                  int(self.get_argument("exp_total_sec"))]
@@ -49,16 +57,20 @@ class BasketballInferSupremacyHandler(BaseHandler, ABC):
 
         parameter = [float(self.get_argument("sigma")), float(self.get_argument("decay"))]
 
+        # 对象初始化
         inferBasketball.set_value_ahc(query_score, clock, match_format, asian_handicap_market_no_draw, totalScore, parameter)
+
+        # 计算
+        return inferBasketball.infer_supremacy()
 
 class BasketballOddsHandler(BaseHandler, ABC) :
 
-    def get(self):
-        basketballMatchOdds = cal_basketball_match_odds();
-        self.setValue(basketballMatchOdds)
-        self.write( {"code":0,"data":basketballMatchOdds.odds_output()} )
+    @run_on_executor
+    def getData(self):
+        # 实例化
+        basketballMatchOdds = cal_basketball_match_odds()
 
-    def setValue(self,basketballMatchOdds):
+        # 解析参数
         mu = [float(self.get_argument("supremacy")), float(self.get_argument("total_goals"))]
         score = [int(self.get_argument("home_score")), int(self.get_argument("away_score"))]
 
@@ -69,4 +81,8 @@ class BasketballOddsHandler(BaseHandler, ABC) :
 
         parameter = [float(self.get_argument("sigma")), float(self.get_argument("decay"))]
 
+        # 对象初始化
         basketballMatchOdds.set_value(mu, score, clock, match_format, parameter)
+
+        # 计算
+        return basketballMatchOdds.odds_output()
