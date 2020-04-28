@@ -2,8 +2,19 @@ from quantization.dynamic_odds_cal import DynamicOddsCal
 from quantization.constants import *
 from scipy.optimize import minimize
 import numpy as np
-from scipy.stats import poisson
+from scipy.stats import poisson, norm
 import math
+
+class InferBasketConfig( object ):
+    ou_line = None
+    ahc_line = None
+    scores = None
+    over_odds = None
+    under_odds = None
+    home_odds = None
+    away_odds = None
+    sigma = None
+    x0 = None
 
 class InferConfig( object ):
     rho = None
@@ -15,6 +26,93 @@ class InferConfig( object ):
     home_odds = None
     away_odds = None
     x0 = None
+
+class DocConfig( object ):
+    sup = None
+    ttg = None
+    rho = None
+    scores = None
+
+    ahc_line_list = None
+    hilo_line_list = None
+    correct_score_limit = None
+    home_ou_line_list = None
+    away_ou_line_list = None
+
+def calculate_decayed_sup_ttg( mu, stage, running_time, ht_add, ft_add , decay ):
+    """
+    @param mu : [sup, ttg]
+    @param stage: 4- pre match, 6 - first half, 7 - middle interval , 8 - second half
+                    13 - end of regular time, 0 - all end
+    """
+    sup = mu[0]
+    ttg = mu[1]
+    last_half = ( 45 * 60 + ft_add ) / ( 90 * 60 + ft_add )
+
+    if stage in [4,6]:
+        t0 = ( 90 * 60 + ft_add + ht_add - running_time ) / ( 90 * 60 + ft_add + ht_add )
+
+        sup_now = sup * ( t0 ** decay )
+        ttg_now = ttg * ( t0 ** decay )
+
+        sup_2nd_half = sup * ( last_half ** decay )
+        ttg_2nd_half = ttg * ( last_half ** decay )
+
+        sup_1st_half = sup_now - sup_2nd_half
+        ttg_1st_half = ttg_now - ttg_2nd_half
+
+        return ( [ sup_1st_half, ttg_1st_half ],
+                 [ sup_2nd_half, ttg_2nd_half ],
+                 [ sup_now, ttg_now ] )
+
+    if stage in [7,8]:
+        t0 = ( 90 * 60 + ft_add - running_time ) / ( 90 * 60 + ft_add )
+
+        sup_now = sup * ( t0 ** decay )
+        ttg_now = ttg * ( t0 ** decay )
+
+        return [ sup_now, ttg_now ]
+
+def collect_games_odds( config: DocConfig ):
+    doc = DynamicOddsCal( sup_ttg=[config.sup, config.ttg],
+                          present_socre=config.scores,
+                          adj_params=[1, config.rho] )
+
+    odds_dict = {}
+
+    odds_dict[market_type.SOCCER_3WAY] = doc.had()
+
+    ahc_dict = {}
+    for i in config.ahc_line_list:
+        ahc_dict[str(i)] = doc.asian_handicap(i)
+    odds_dict[market_type.SOCCER_ASIAN_HANDICAP] = ahc_dict
+
+    ou_dict = {}
+    for i in config.hilo_line_list:
+        ou_dict[str(i)] = doc.over_under(i)
+    odds_dict[market_type.SOCCER_ASIAN_TOTALS] = ou_dict
+
+    cs_dict = {}
+    for i in range( config.correct_score_limit ):
+        for j in range( config.correct_score_limit ):
+            cs_dict[str(i) + '_' + str(j)] = doc.exact_score( i, j )
+    odds_dict[market_type.SOCCER_CORRECT_SCORE] = cs_dict
+
+    hou_dict = {}
+    for i in config.home_ou_line_list:
+        hou_dict[str(i)] = doc.over_under_home(i)
+    odds_dict[market_type.SOCCER_GOALS_HOME_TEAM] = hou_dict
+
+    aou_dict = {}
+    for i in config.away_ou_line_list:
+        aou_dict[str(i)] = doc.over_under_away(i)
+    odds_dict[market_type.SOCCER_GOALS_AWAY_TEAM] = aou_dict
+
+    odds_dict[market_type.SOCCER_BOTH_TEAMS_TO_SCORE] = doc.both_scored()
+    odds_dict[market_type.SOCCER_ODD_EVEN_GOALS] = doc.odd_even_ttg()
+
+    return odds_dict
+
 
 def infer_ttg_sup( config ):
 
@@ -260,23 +358,131 @@ def infer_ttg_sup( config ):
     model = minimize( _obj, x0=x0, \
                       args=( c , doc, om_normalized , ha_normalized ), \
                       options={ 'disp': True, 'maxiter': 100} , jac= _grad )
-    # model = minimize( _obj, x0=5, options={ 'disp': True, 'maxiter': 300} )
+    # model = minimize( _obj, x0=x0,
+    #                   args=( c , doc, om_normalized , ha_normalized ),
+    #                   options={ 'disp': True, 'maxiter': 300} )
+    #
+    return model.x
 
-    print( model.x )
+def infer_sup_ttg_bas( config : InferBasketConfig ):
+
+    def _obj( x, *args ):
+
+        config = args[0]
+
+        line = config.ou_line
+        over_odds = config.over_odds
+        under_odds = config.under_odds
+        score = config.scores
+        sigma = config.sigma * np.sqrt(2)
+        home_odds = config.home_odds
+        away_odds = config.away_odds
+        ahc_line = config.ahc_line
+
+        ssum = score[0] + score[1]
+        sgap = score[0] - score[1]
+
+        om = 1./ over_odds
+        um = 1./ under_odds
+        om = om / ( om + um )
+
+        hm = 1./ home_odds
+        am = 1. / away_odds
+        hm = hm / ( hm + am )
+
+        if math.ceil(line) - line == 0.5:
+            under_margin = norm(loc=x[1], scale=sigma).cdf(line -ssum)
+            over_margin = 1. - under_margin
+        elif math.ceil(line) - line == 0:
+            under_margin = norm(loc=x[1], scale=sigma).cdf( line - ssum - 0.5 )
+            over_margin = 1. - norm(loc=x[1], scale=sigma).cdf(line - ssum + 0.5)
+
+            over_margin, under_margin = over_margin / (over_margin + under_margin), \
+                                        under_margin / (over_margin + under_margin)
+        else:
+            raise Exception
+
+        draw_prob = norm(loc=x[0], scale=sigma).cdf( -sgap + 0.5) - \
+                    norm(loc=x[0], scale=sigma).cdf( -sgap - 0.5)
+
+        if math.ceil(ahc_line) - ahc_line == 0.5:
+            if ahc_line < 0:
+                home_margin = 1. - norm(loc=x[0], scale=sigma).cdf(-ahc_line - sgap)
+                away_margin = 1. - home_margin - draw_prob
+            else:
+                away_margin = norm(loc=x[0], scale=sigma).cdf(-ahc_line - sgap)
+                home_margin = 1. - away_margin - draw_prob
+
+        elif math.ceil(ahc_line) - ahc_line == 0:
+            righ = norm(loc=x[0], scale=sigma).cdf(-ahc_line - sgap + 0.5)
+            left = norm(loc=x[0], scale=sigma).cdf(-ahc_line - sgap - 0.5)
+
+            if ahc_line < 0:
+                home_margin = 1. - righ
+                away_margin = left - draw_prob
+            elif ahc_line > 0:
+                home_margin = 1. - righ - draw_prob
+                away_margin = left
+            else:
+                home_margin = 1. - righ
+                away_margin = left
+        else:
+            raise Exception
+
+        home_margin = home_margin / (home_margin + away_margin)
+
+        return 0.5 * ( om - over_margin ) * ( om - over_margin ) + \
+               0.5 * ( hm - home_margin ) * ( hm - home_margin )
+
+
+    model = minimize( _obj, x0=c.x0,
+                      options={ 'disp': True}, args=( config ))
+
+    return model.x
 
 if __name__ == '__main__':
     config = InferConfig()
-    config.ou_line = 4.75
-    config.ahc_line = 1
+    config.ou_line = 3.5
+    config.ahc_line = -0.25
     config.scores = [0,0]
     config.over_odds = 1.9
     config.under_odds = 1.78
     config.home_odds = 2.1
     config.away_odds = 1.8
-    config.x0 = [ -config.ahc_line , config.ou_line ]
+    config.x0 = [ -config.ahc_line, config.ou_line ]
     config.rho = -0.08
+
+    c = InferBasketConfig()
+    c.ou_line = 150.5
+    c.over_odds = 1.9
+    c.under_odds = 1.78
+    c.scores = [6,0]
+    c.sigma = 9
+    c.ahc_line = 10
+    c.home_odds = 2.1
+    c.away_odds = 1.8
+    c.x0 = [ c.ahc_line, c.ou_line ]
 
     from time import time
     t1 = time()
-    infer_ttg_sup( config )
+    infer_sup_ttg_bas( c )
+
     print('time =:', time() - t1 )
+    # infer_ttg_sup( config )
+
+    # from sympy import *
+    # x = symbols( 'x' )
+    # mu = symbols( 'mu' )
+    # sigma = symbols( 'sigma')
+    #
+    # f = ( 1. / (sigma * sqrt( 2* pi) ) ) * exp(-(x-mu) * (x-mu)  / ( 2*sigma*sigma))
+    # f2 = ( (x-mu) / (sigma*sigma) )
+    # print( integrate( f2*f , mu) )
+    #
+    # import matplotlib.pyplot as plt
+
+    # y = [ i ** 0.5 for i in np.arange( 1, 0 , -0.01) ]
+    #
+    # fig, ax = plt.subplots()
+    # ax.plot( range(0,100), y )
+    # plt.show()
