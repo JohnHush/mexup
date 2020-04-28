@@ -24,14 +24,6 @@ json.encoder.FLOAT_REPR = lambda x: format(x, '.4f')
 class NoResultError(Exception):
     pass
 
-def pretty_floats(obj):
-    if isinstance(obj, float):
-        return round(obj, 5)
-    elif isinstance(obj, dict):
-        return dict((k, pretty_floats(v)) for k, v in obj.items())
-    elif isinstance(obj, (list, tuple)):
-        return map(pretty_floats, obj)
-    return obj
 
 class BaseHandler(tornado.web.RequestHandler, ABC):
     executor = ThreadPoolExecutor(30)

@@ -1,8 +1,5 @@
 from abc import ABC
-from concurrent.futures.thread import ThreadPoolExecutor
 
-import tornado
-from tornado import gen
 from tornado.concurrent import run_on_executor
 
 from apps.base.base_handler import BaseHandler
@@ -16,8 +13,6 @@ class BasketballInferTotalGoalsHandler(BaseHandler, ABC):
 
     @run_on_executor
     def getData(self):
-        # 实例化
-        inferBasketball = self.getInferBasketball()
 
         # 解析参数
         query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
@@ -29,7 +24,8 @@ class BasketballInferTotalGoalsHandler(BaseHandler, ABC):
         max_total_goals = 400
         parameter = [float(self.get_argument("sigma")), float(self.get_argument("decay"))]
 
-        #对象初始化
+        # 实例化
+        inferBasketball = self.getInferBasketball()
         inferBasketball.set_value_ou(query_score,clock,match_format,over_under_market,max_total_goals,parameter)
 
         #计算
@@ -41,8 +37,7 @@ class BasketballInferSupremacyHandler(BaseHandler, ABC):
 
     @run_on_executor
     def getData(self):
-        # 实例化
-        inferBasketball = self.getInferBasketball()
+
 
         # 解析参数
         query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
@@ -57,7 +52,8 @@ class BasketballInferSupremacyHandler(BaseHandler, ABC):
 
         parameter = [float(self.get_argument("sigma")), float(self.get_argument("decay"))]
 
-        # 对象初始化
+        # 实例化
+        inferBasketball = self.getInferBasketball()
         inferBasketball.set_value_ahc(query_score, clock, match_format, asian_handicap_market_no_draw, totalScore, parameter)
 
         # 计算
@@ -67,8 +63,7 @@ class BasketballOddsHandler(BaseHandler, ABC) :
 
     @run_on_executor
     def getData(self):
-        # 实例化
-        basketballMatchOdds = cal_basketball_match_odds()
+
 
         # 解析参数
         mu = [float(self.get_argument("supremacy")), float(self.get_argument("total_goals"))]
@@ -81,7 +76,8 @@ class BasketballOddsHandler(BaseHandler, ABC) :
 
         parameter = [float(self.get_argument("sigma")), float(self.get_argument("decay"))]
 
-        # 对象初始化
+        # 实例化
+        basketballMatchOdds = cal_basketball_match_odds()
         basketballMatchOdds.set_value(mu, score, clock, match_format, parameter)
 
         # 计算

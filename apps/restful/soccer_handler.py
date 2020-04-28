@@ -1,8 +1,5 @@
-import json
 from abc import ABC
-from concurrent.futures.thread import ThreadPoolExecutor
 
-import tornado
 from tornado.concurrent import run_on_executor
 
 from apps.base.base_handler import BaseHandler
