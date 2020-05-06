@@ -362,7 +362,30 @@ def infer_ttg_sup( config ):
     #                   args=( c , doc, om_normalized , ha_normalized ),
     #                   options={ 'disp': True, 'maxiter': 300} )
     #
+
     return model.x
+
+def calculate_base_sup_ttg( mu_now, stage, running_time, ht_add, ft_add , decay ):
+    """
+    @param mu_now : [sup_now, ttg_now]
+    @param stage: 4- pre match, 6 - first half, 7 - middle interval , 8 - second half
+                    13 - end of regular time, 0 - all end
+    """
+    sup_now = mu_now[0]
+    ttg_now = mu_now[1]
+
+    if stage in [4,6]:
+        t0 = ( 90 * 60 + ft_add + ht_add - running_time ) / ( 90 * 60 + ft_add + ht_add )
+
+    if stage in [7,8]:
+        t0 = ( 90 * 60 + ft_add - running_time ) / ( 90 * 60 + ft_add )
+
+    sup_base = sup_now / ( t0 ** decay )
+    ttg_base = ttg_now / ( t0 ** decay )
+
+    return [sup_base , ttg_base]
+
+
 
 def infer_sup_ttg_bas( config : InferBasketConfig ):
 
