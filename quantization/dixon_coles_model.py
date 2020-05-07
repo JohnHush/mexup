@@ -6,6 +6,7 @@ from scipy.stats import poisson
 from scipy.optimize import minimize
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 import pickle
+import matplotlib.pyplot as plt
 
 pd.set_option( 'display.max_columns', None )
 
@@ -26,6 +27,59 @@ class Dataset( object ):
 
     def data(self):
         return self.df
+
+class XlsData( Dataset ):
+    def _fetch(self):
+        xls_name = self.kwargs.pop( 'xls', None )
+        if not xls_name:
+            raise ValueError( 'no keyword xls in **kwargs: %r' % self.kwargs )
+
+        self.df = pd.read_excel( xls_name )
+
+    def _preprocess(self):
+        # transform the column Score into 2 cols
+        # first: 4 * 60 outcomes
+        # second: the last outcomes, no draw
+        def map_with_draw( s ):
+            if not 'OT' in s:
+                return s
+            return s.split('(')[0]
+
+        def map_no_draw( s ):
+            if not 'OT' in s:
+                return s
+            return s.split( ' ' )[-1][:-1]
+
+        self.df['Score_with_draw'] = self.df.Score.map( map_with_draw )
+        self.df['Score_no_draw']   = self.df.Score.map( map_no_draw )
+        self.df = self.df.drop( ['Score'], axis=1 )
+
+    def view(self):
+        # print( self.df.head() )
+
+        dff = self.df[ self.df['Home Team'] == 'MINNESOTA TIMBERWOLVES' ]
+        dff2 = self.df[ self.df['Away Team'] == 'MINNESOTA TIMBERWOLVES' ]
+
+        # score = self.df['Score'].map( lambda s: 'xxx' if 'OT' in s else s )
+
+        # home_score = self.df['Score_no_draw'].map( lambda s: int(s.split(':')[0]) )
+        # home_score = dff['Score_no_draw'].map( lambda s: int(s.split(':')[0]) ) + \
+        #              dff2['Score_no_draw'].map(lambda s: int(s.split(':')[1]))
+
+        home_score = dff['Score_no_draw'].map( lambda s: int(s.split(':')[0]) )
+        # home_score = dff2['Score_no_draw'].map(lambda s: int(s.split(':')[1]))
+
+        fig, ax = plt.subplots()
+
+        # nn , edge, _ = plt.hist( home_score , bins = 100 )
+
+        # for i in range( len(nn) ):
+        #     print( '[ %f, %f ]   %f '% (edge[i], edge[i+1], nn[i]) )
+        # for i, n in enumerate(nn):
+        #     print( i, n )
+        ax.hist( home_score , bins = np.arange( 80, 140, 1 ) )
+        # ax.plot( home_score.index, home_score )
+        plt.show()
 
 class UrlData( Dataset ):
     def _fetch(self):
@@ -176,17 +230,18 @@ class DixonColesModel( object ):
         return home_exp, away_exp, self.model.x[-2]
 
 if __name__ == "__main__":
-    ds = UrlData( url = [ './1920_E0.csv' , './1819_E0.csv', './1718_E0.csv' ])
-    dcm = DixonColesModel( ds )
+    ds = XlsData( xls='./StartClosePrices-5.xls' )
+    ds.view()
 
-    dcm.solve()
-    dcm.save_model( './EnglandPremierLeague_17181920_dcm.model')
+    # ds = UrlData( url = [ './1920_E0.csv' , './1819_E0.csv', './1718_E0.csv' ])
+    # dcm = DixonColesModel( ds )
+    #
+    # dcm.solve()
+    # dcm.save_model( './EnglandPremierLeague_17181920_dcm.model')
     # dcm.load_model( './EnglandPremierLeague_1718_dcm.model' )
-    print( dcm.model.x )
+    # print( dcm.model.x )
 
     # home_exp, away_exp, rho = dcm.infer_exp_rho( 'Arsenal', 'Southampton' )
 
     # unite_matrix = dcm.infer_prob_matrix( 'Man City', 'Huddersfield' , 4 )
 
-    print( type(ds.encoder.categories_[0] ))
-    print( (ds.encoder.categories_ ))
