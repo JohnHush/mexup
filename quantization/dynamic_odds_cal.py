@@ -105,7 +105,7 @@ class DynamicOddsCalBas( object ):
                 selection_type.AWAY: round(away_margin, 5)}
 
     def match_winner(self):
-        return self.ahc_with_draw(-0.5)
+        return self.ahc_no_draw(-0.5)
 
 class DynamicOddsCal( object ):
     """
