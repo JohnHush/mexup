@@ -1,80 +1,15 @@
 import pytest
-from quantization.soccer_poisson import cal_soccer_odds
-from quantization.dynamic_odds_cal import DynamicOddsCal, DynamicOddsCalBas
-from quantization.basketball_normal import cal_basketball_odds
-import numpy as np
+from pandas import np
+
+from quantization.old.soccer.match_odds import cal_soccer_odds, cal_match_odds
+
 from quantization.constants import *
+from quantization.soccer.soccer_api import INTERFACE_infer_soccer_sup_ttg, collect_games_odds, \
+    calculate_decayed_sup_ttg, INTERFACE_collect_soccer_odds
+from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal, DocConfig
+from quantization.soccer.soccer_inversion import InferSoccerConfig
 
-class TestClass2( object ):
-    sup_ttg = [
-        [ 0.5, 175.5 ],
-        [ 0, 20 ],
-    ]
-    sigma = [ 11, 22, 5 ]
 
-    score = [
-        [ 10, 11 ],
-        [ 0, 0 ],
-        [ 200, 300 ],
-    ]
-
-    line = np.arange( -5, 5, 0.5 )
-
-    @pytest.mark.skip()
-    def test_ahc_no_draw(self):
-        doc_v1 = cal_basketball_odds()
-
-        doc_v2 = DynamicOddsCalBas()
-
-        for st in TestClass2.sup_ttg:
-            for ssggmm in TestClass2.sigma:
-                for s in TestClass2.score:
-                    for l in TestClass2.line:
-                        print( st, ssggmm, s )
-                        doc_v1.set_value( st , s, [ssggmm])
-                        doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
-                        assert ( doc_v1.asian_handicap_no_draw(l ) == doc_v2.ahc_no_draw(l))
-
-    @pytest.mark.skip()
-    def test_ahc_with_draw(self):
-        doc_v1 = cal_basketball_odds()
-        doc_v2 = DynamicOddsCalBas()
-
-        for st in TestClass2.sup_ttg:
-            for ssggmm in TestClass2.sigma:
-                for s in TestClass2.score:
-                    for l in TestClass2.line:
-                        print( st, ssggmm, s )
-                        doc_v1.set_value( st , s, [ssggmm])
-                        doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
-                        assert ( doc_v1.asian_handicap( l ) == doc_v2.ahc_with_draw(l))
-
-    @pytest.mark.skip()
-    def test_over_under(self):
-        doc_v1 = cal_basketball_odds()
-        doc_v2 = DynamicOddsCalBas()
-
-        line = np.arange( 0, 200, 0.5 )
-        for st in TestClass2.sup_ttg:
-            for ssggmm in TestClass2.sigma:
-                for s in TestClass2.score:
-                    for l in line:
-                        print( st, ssggmm, s )
-                        doc_v1.set_value( st , s, [ssggmm])
-                        doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
-                        assert ( doc_v1.over_under( l ) == doc_v2.over_under(l))
-
-    def test_had(self):
-        doc_v1 = cal_basketball_odds()
-        doc_v2 = DynamicOddsCalBas()
-
-        for st in TestClass2.sup_ttg:
-            for ssggmm in TestClass2.sigma:
-                for s in TestClass2.score:
-                    print( st, ssggmm, s )
-                    doc_v1.set_value( st , s, [ssggmm])
-                    doc_v2.refresh( sup_ttg=st, present_score=s, sigma=ssggmm )
-                    assert ( doc_v1.had( ) == doc_v2.had() )
 class TestClass( object ):
     rho = [ -0.1285, 10. ]
     score = [
@@ -95,6 +30,87 @@ class TestClass( object ):
                      [10, 0],
                      [20, 10]
                      ]
+
+    def test_cal_decay_sup_ttg(self):
+        # match.set_value([0.5,2.7],[[0,0],[0,0]],[8,45*60,1*60,3*60],0.88,[1,-0.08])
+        stage = 6
+        ht_add = 2 * 60
+        ft_add = 3 * 60
+        running_time = 25 * 60
+        decay = 0.88
+        mu = [0.5, 2.7]
+        rho = -0.08
+
+        x = calculate_decayed_sup_ttg(mu,
+                                      stage=stage,
+                                      running_time=running_time,
+                                      ht_add=ht_add,
+                                      ft_add=ft_add,
+                                      decay=decay)
+        print(x)
+
+        match = cal_match_odds()
+        match.set_value(mu,
+                        [[0, 0], [0, 0]],
+                        [stage, running_time, ht_add, ft_add],
+                        decay,
+                        [1, -0.08])
+
+        full_time_odds_config = DocConfig()
+        full_time_odds_config.sup = x[0][0]
+        full_time_odds_config.ttg = x[0][1]
+        full_time_odds_config.rho = rho
+        full_time_odds_config.scores = [0, 0]
+        full_time_odds_config.ahc_line_list = np.arange(-10, 10.25, 0.25)
+        full_time_odds_config.hilo_line_list = np.arange(0.5, 15.25, 0.25)
+        full_time_odds_config.correct_score_limit = 7
+        full_time_odds_config.home_ou_line_list = np.arange(0.5, 10.25, 0.25)
+        full_time_odds_config.away_ou_line_list = np.arange(0.5, 10.25, 0.25)
+
+        d1 = collect_games_odds(full_time_odds_config)
+        d2 = match.odds_output()[period.SOCCER_FIRST_HALF]
+
+        print(d1[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
+        print(d2[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
+
+        assert (d1 == d2)
+
+
+    def test_INTERFACE_collect_odds(self):
+        # match.set_value([0.5,2.7],[[0,0],[0,0]],[8,45*60,1*60,3*60],0.88,[1,-0.08])
+        stage = 7
+        ht_add = 2 * 60
+        ft_add = 3 * 60
+        running_time = 75 * 60
+        decay = 0.88
+        mu = [ 0.5, 2.7 ]
+        rho = -0.08
+
+        match = cal_match_odds()
+        match.set_value( mu,
+                         [[0, 0], [0, 0]],
+                         [ stage, running_time, ht_add, ft_add],
+                         decay,
+                         [1, -0.08])
+
+        r = INTERFACE_collect_soccer_odds(mu,
+                                           [[0,0], [0,0]],
+                                           [ stage , running_time, ht_add, ft_add],
+                                           decay,
+                                           -0.08 )
+
+        # d1 = r[period.SOCCER_FIRST_HALF]
+        # d2 = match.odds_output()[period.SOCCER_FIRST_HALF]
+
+        d11 = r[period.SOCCER_FULL_TIME]
+        d22 = match.odds_output()[period.SOCCER_FULL_TIME]
+
+        # print( d1[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
+        # print( d2[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
+
+        # assert ( d1 == d2 )
+        assert ( d11 == d22 )
+
 
     @pytest.mark.skip()
     def test_had(self):
@@ -258,3 +274,44 @@ class TestClass( object ):
 
         assert( doc.odd_even_ttg()  == examp.odd_even() )
     '''
+
+
+if __name__ == '__main__':
+    config = InferSoccerConfig()
+    config.ou_line = 3.5
+    config.ahc_line = -0.25
+    config.scores = [0, 0]
+    config.over_odds = 1.9
+    config.under_odds = 1.78
+    config.home_odds = 2.1
+    config.away_odds = 1.8
+
+
+    from time import time
+
+    t1 = time()
+
+    x = INTERFACE_infer_soccer_sup_ttg(config)
+    # x,y  = INTERFACE_infer_basketball_sup_ttg( c, clock, match_format, decay )
+    print(x)
+
+
+    print('time =:', time() - t1)
+    # infer_ttg_sup( config )
+
+    # from sympy import *
+    # x = symbols( 'x' )
+    # mu = symbols( 'mu' )
+    # sigma = symbols( 'sigma')
+    #
+    # f = ( 1. / (sigma * sqrt( 2* pi) ) ) * exp(-(x-mu) * (x-mu)  / ( 2*sigma*sigma))
+    # f2 = ( (x-mu) / (sigma*sigma) )
+    # print( integrate( f2*f , mu) )
+    #
+    # import matplotlib.pyplot as plt
+
+    # y = [ i ** 0.5 for i in np.arange( 1, 0 , -0.01) ]
+    #
+    # fig, ax = plt.subplots()
+    # ax.plot( range(0,100), y )
+    # plt.show()

@@ -5,13 +5,13 @@ from tornado.concurrent import run_on_executor
 from apps.base.base_handler import BaseHandler
 
 #反查 totoal goal
-from quantization.basketball.basketball_match_odds import cal_basketball_match_odds
+from quantization.old.basketball.basketball_match_odds import cal_basketball_match_odds
 
 
 class BasketballInferTotalGoalsHandler(BaseHandler, ABC):
 
 
-    @run_on_executor
+    # @run_on_executor
     def getData(self):
 
         # 解析参数
@@ -35,7 +35,7 @@ class BasketballInferTotalGoalsHandler(BaseHandler, ABC):
 class BasketballInferSupremacyHandler(BaseHandler, ABC):
 
 
-    @run_on_executor
+    # @run_on_executor
     def getData(self):
 
 
@@ -61,7 +61,7 @@ class BasketballInferSupremacyHandler(BaseHandler, ABC):
 
 class BasketballOddsHandler(BaseHandler, ABC) :
 
-    @run_on_executor
+    # @run_on_executor
     def getData(self):
 
 

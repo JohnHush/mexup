@@ -1,5 +1,4 @@
-import pytest
-from quantization.dixon_coles_model import DixonColesModel, UrlData
+from quantization.model.soccer.dixon_coles_model import DixonColesModel, UrlData
 
 class TestClass( object ):
     def test_infer_team_strength(self):

@@ -1,6 +1,6 @@
-from quantization.basketball_binomial_model import BasBinomialModel
-from quantization.basketball_gaussian_model import BasGaussianModel
-from quantization.basketball_poisson_model import BasPoissonModel
+from quantization.model.basketball.basketball_binomial_model import BasBinomialModel
+from quantization.model.basketball.basketball_gaussian_model import BasGaussianModel
+from quantization.model.basketball.basketball_poisson_model import BasPoissonModel
 
 import matplotlib.pyplot as plt
 

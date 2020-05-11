@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 import numpy as np
-from quantization.basketball.basketball_normal import cal_basketball_odds
+from quantization.old.basketball.basketball_normal import cal_basketball_odds
 from quantization.constants import period, market_type
 import math
 

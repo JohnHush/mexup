@@ -1,4 +1,4 @@
-from quantization.soccer_poisson import cal_soccer_odds
+from quantization.old.soccer.soccer_poisson import cal_soccer_odds
 from quantization.constants import market_type, period
 
 import numpy as np

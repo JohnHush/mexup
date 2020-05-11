@@ -6,12 +6,12 @@ from apps.base.base_handler import BaseHandler
 
 #反查 totoal goal
 from quantization.constants import config
-from quantization.match_odds import cal_match_odds
+from quantization.old.soccer.match_odds import cal_match_odds
 
 
 class SoccerInferTotalGoalsHandler(BaseHandler, ABC):
 
-    @run_on_executor
+    # @run_on_executor
     def getData(self):
 
         # 解析参数
@@ -38,7 +38,7 @@ class SoccerInferTotalGoalsHandler(BaseHandler, ABC):
 #反查 supremacy
 class SoccerInferSupremacyHandler(BaseHandler, ABC):
 
-    @run_on_executor
+    # @run_on_executor
     def getData(self):
         # 解析参数
         query_score = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
@@ -65,7 +65,7 @@ class SoccerInferSupremacyHandler(BaseHandler, ABC):
 
 class SoccerOddsHandler(BaseHandler, ABC) :
 
-    @run_on_executor
+    # @run_on_executor
     def getData(self):
         # 解析参数
         mu = [float(self.get_argument("supremacy")), float(self.get_argument("total_goals"))]

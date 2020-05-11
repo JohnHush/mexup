@@ -4,6 +4,7 @@ class config(  ):
     #反查精度
     infer_eps = 0.001
 
+
 #市场类型
 class market_type(  ):
     # 足球亚盘让球
@@ -245,3 +246,4 @@ class match_states():
     SOCCER_PENALTY = 15
     # 点球结束
     SOCCER_PENALTY_ENDED = 16
+

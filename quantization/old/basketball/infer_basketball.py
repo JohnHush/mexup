@@ -2,7 +2,7 @@
 # coding: utf-8
 from quantization.constants import selection_type, config
 import numpy as np
-from quantization.basketball.basketball_normal import cal_basketball_odds
+from quantization.old.basketball.basketball_normal import cal_basketball_odds
 
 
 # score = [0,0]

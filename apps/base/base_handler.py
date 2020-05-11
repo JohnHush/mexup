@@ -1,30 +1,33 @@
-import abc
+# import abc
 import tornado.web
 from abc import ABC
-from concurrent.futures.thread import ThreadPoolExecutor
-from quantization.infer_soccer_model_input import infer_soccer_model_input
-from quantization.basketball.infer_basketball_model_input import infer_basketball_model_input
+# from concurrent.futures.thread import ThreadPoolExecutor
+from quantization.old.basketball.infer_basketball import infer_basketball_model_input
+
 
 
 #
 # import logging
 # logger = logging.getLogger(__name__)
 #
+from quantization.old.soccer.infer_soccer import infer_soccer_model_input
+
 
 class NoResultError(Exception):
     pass
 
 
 class BaseHandler(tornado.web.RequestHandler, ABC):
-    executor = ThreadPoolExecutor(30)
+    # executor = ThreadPoolExecutor(30)
 
-    @tornado.gen.coroutine
+    # @tornado.gen.coroutine
     def get(self):
-        data = yield self.getData()
+        # data = yield self.getData()
+        data = self.getData()
         result = {"code": 0, "data": data}
         self.write(result)
 
-    @abc.abstractmethod
+    # @abc.abstractmethod
     def getData(self):
         pass
 

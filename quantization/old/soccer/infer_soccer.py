@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 from quantization.constants import selection_type
-from quantization.soccer_poisson import cal_soccer_odds
+from quantization.old.soccer.soccer_poisson import cal_soccer_odds
 #score = [0,0]
 # asian_handicap_market=[-0.5,1.84,1.99]
 # over_under_market=[2.5,1.84,1.99]
