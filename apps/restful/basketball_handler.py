@@ -37,7 +37,8 @@ class V2BasketballSupTtgHandler(BaseHandler, ABC):
 
         decay = float(self.get_argument("decay"))
 
-        return INTERFACE_infer_basketball_sup_ttg(config, clock, match_format, decay)
+        [sup_now, sup_original], [ttg_now, ttg_original] =   INTERFACE_infer_basketball_sup_ttg(config, clock, match_format, decay)
+        return {"sup_now":sup_now,"sup_base":sup_original,"ttg_now":ttg_now,"ttg_base":ttg_original}
 
 
 class V2BasketballOddsHandler(BaseHandler, ABC) :

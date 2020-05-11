@@ -29,7 +29,15 @@ class V2SoccerSupTtgHandler(BaseHandler, ABC):
         config.away_odds = float(self.get_argument("ahc_away_odds"))
         config.rho = float(self.get_argument("rho"))
 
-        return INTERFACE_infer_soccer_sup_ttg(config)
+        stage = int(self.get_argument("stage"))
+        running_time = int(self.get_argument("running_time"))
+        ht_add = int(self.get_argument("ht_add"))
+        ft_ad = int(self.get_argument("ft_ad"))
+
+        decay = float(self.get_argument("decay"))
+
+        [sup_now, sup_original], [ttg_now, ttg_original] = INTERFACE_infer_soccer_sup_ttg(config,stage,running_time,ht_add,ft_ad,decay)
+        return {"sup_now":sup_now,"sup_base":sup_original,"ttg_now":ttg_now,"ttg_base":ttg_original}
 
 class V2SoccerOddsHandler(BaseHandler, ABC) :
 
