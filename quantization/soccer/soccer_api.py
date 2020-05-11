@@ -102,8 +102,34 @@ def calculate_decayed_sup_ttg(mu, stage, running_time, ht_add, ft_add, decay):
         return [sup_now, ttg_now]
 
 
-def INTERFACE_infer_soccer_sup_ttg(c: InferSoccerConfig):
-    return infer_ttg_sup(c)
+def INTERFACE_infer_soccer_sup_ttg(c: InferSoccerConfig,
+                                   stage,
+                                   running_time,
+                                   ht_add,
+                                   ft_add,
+                                   decay):
+    """
+
+    Args:
+        c:
+        stage:
+        running_time:
+        ht_add:
+        ft_add:
+        decay:
+
+    Returns: [sup_now, sup_original], [ttg_now, ttg_original]
+
+    """
+    sup_now, ttg_now = infer_ttg_sup(c)
+    sup_original, ttg_original = calculate_base_sup_ttg( [sup_now, ttg_now],
+                                                         stage,
+                                                         running_time,
+                                                         ht_add,
+                                                         ft_add,
+                                                         decay )
+
+    return [sup_now, sup_original], [ttg_now, ttg_original]
 
 
 
