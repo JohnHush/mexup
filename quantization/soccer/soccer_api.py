@@ -1,4 +1,4 @@
-from pandas import np
+import numpy as np
 
 from quantization.constants import market_type, period
 from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal, DocConfig

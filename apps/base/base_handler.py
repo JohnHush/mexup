@@ -31,6 +31,7 @@ class BaseHandler(tornado.web.RequestHandler, ABC):
     def getData(self):
         pass
 
+
     def getInferSoccer(self):
         cal = infer_soccer_model_input();
         return cal;

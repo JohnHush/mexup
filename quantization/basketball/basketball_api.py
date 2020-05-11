@@ -1,6 +1,5 @@
 import math
-
-from pandas import np
+import numpy as np
 
 from quantization.basketball.basketball_dynamic_odds_cal import DynamicOddsCalBas
 from quantization.basketball.basketball_inversion import InferBasketConfig, infer_sup_ttg_bas

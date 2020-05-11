@@ -1,12 +1,55 @@
 from abc import ABC
 
-from tornado.concurrent import run_on_executor
+# from tornado.concurrent import run_on_executor
 
 from apps.base.base_handler import BaseHandler
 
 #反查 totoal goal
 from quantization.constants import config
 from quantization.old.soccer.match_odds import cal_match_odds
+from quantization.soccer.soccer_api import INTERFACE_infer_soccer_sup_ttg, INTERFACE_collect_soccer_odds
+from quantization.soccer.soccer_inversion import InferSoccerConfig
+
+
+class V2SoccerSupTtgHandler(BaseHandler, ABC):
+
+    # @run_on_executor
+    def getData(self):
+
+        config = InferSoccerConfig()
+        config.scores = [float(self.get_argument("home_score")), float(self.get_argument("away_score"))]
+
+        config.ou_line = float(self.get_argument("ou_line"))
+        config.over_odds = float(self.get_argument("ou_over_odds"))
+        config.under_odds =  float(self.get_argument("ou_under_odds"))
+
+
+        config.ahc_line = float(self.get_argument("ahc_line"))
+        config.home_odds = float(self.get_argument("ahc_home_odds"))
+        config.away_odds = float(self.get_argument("ahc_away_odds"))
+        config.rho = float(self.get_argument("rho"))
+
+        return INTERFACE_infer_soccer_sup_ttg(config)
+
+class V2SoccerOddsHandler(BaseHandler, ABC) :
+
+    # @run_on_executor
+    def getData(self):
+        # 解析参数
+        mu = [float(self.get_argument("supremacy")), float(self.get_argument("total_goals"))]
+
+        score = [[int(self.get_argument("half_time_score_home")), int(self.get_argument("half_time_score_away"))],
+                 [int(self.get_argument("full_time_score_home")), int(self.get_argument("full_time_score_away"))]]
+
+        clock = [int(self.get_argument("stage")), int(self.get_argument("running_time")),
+                 int(self.get_argument("ht_add")), int(self.get_argument("ft_ad"))]
+
+        decay = float(self.get_argument("decay"))
+
+        rho =  float(self.get_argument("rho"))
+
+        return INTERFACE_collect_soccer_odds(mu, score,clock,decay,rho)
+
 
 
 class SoccerInferTotalGoalsHandler(BaseHandler, ABC):

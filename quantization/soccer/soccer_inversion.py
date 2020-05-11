@@ -334,10 +334,10 @@ def infer_ttg_sup(config):
 
     model = minimize(_obj, x0=x0, \
                      args=(c, doc, om_normalized, ha_normalized), \
-                     options={'disp': True, 'maxiter': 100}, jac=_grad)
+                     options={'disp': False, 'maxiter': 100}, jac=_grad)
     # model = minimize( _obj, x0=x0,
     #                   args=( c , doc, om_normalized , ha_normalized ),
     #                   options={ 'disp': True, 'maxiter': 300} )
     #
 
-    return model.x
+    return model.x.tolist()

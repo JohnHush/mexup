@@ -160,6 +160,6 @@ def infer_sup_ttg_bas(config: InferBasketConfig):
                0.5 * (hm - home_margin) * (hm - home_margin)
 
     model = minimize(_obj, x0=config.x0,
-                     options={'disp': True}, args=(config))
+                     options={'disp': False}, args=(config))
 
     return model.x

@@ -9,4 +9,12 @@ url_patterns = [
     (r"basketball/getAllOdds", basketball_handler.BasketballOddsHandler),
     (r"basketball/getTotalGoals", basketball_handler.BasketballInferTotalGoalsHandler),
     (r"basketball/getSupremacy", basketball_handler.BasketballInferSupremacyHandler),
+
+
+    (r"v2/soccer/getSupTtg", soccer_handler.V2SoccerSupTtgHandler),
+    (r"v2/soccer/getAllOdds", soccer_handler.V2SoccerOddsHandler),
+
+    (r"v2/basketball/getSupTtg", basketball_handler.V2BasketballSupTtgHandler),
+    (r"v2/basketball/getAllOdds", basketball_handler.V2BasketballOddsHandler),
+
 ]
