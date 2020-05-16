@@ -99,6 +99,9 @@ class DynamicOddsCal( object ):
 
         1st get the odds for every bet, its return expectation should be 1 if investing 1
         2nd calculate the margin according to the odds
+
+        AsianHandicap is the only game in which the line doesn't been influenced by
+        the current scores
         """
         l , t = DynamicOddsCal._calculate_critical_line( line )
 
@@ -122,6 +125,55 @@ class DynamicOddsCal( object ):
 
         return { selection_type.HOME: round( home_margin, 5 ),
                  selection_type.AWAY: round( away_margin, 5 ) }
+
+    def european_handicap(self, line):
+        """
+
+        Args:
+            line: +-1, +-2, +-3,
+                With Asian Handicap wagers you can have handicaps such as +1, +1.25, +1.5,
+                +1.75 and +2, while European Handicap wagers can only have handicaps in
+                whole numbers (+1, +2, etc.)
+        """
+        line = line + self._sgap
+
+        home_margin = np.tril( self._M, line-1 ).sum()
+        away_margin = np.triu( self._M, line+1 ).sum()
+        draw_margin = np.diag( self._M, line ).sum()
+
+        return { selection_type.HOME: round( home_margin, 5 ),
+                 selection_type.DRAW: round( draw_margin, 5 ),
+                 selection_type.AWAY: round( away_margin, 5 ) }
+
+    def draw_no_bet(self):
+        home_margin = np.tril( self._M, self._sgap-1 ).sum()
+        away_margin = np.triu( self._M, self._sgap+1 ).sum()
+
+        home_margin, away_margin = home_margin / ( home_margin + away_margin ),\
+                                   away_margin / ( home_margin + away_margin )
+
+        return {selection_type.HOME: round(home_margin, 5),
+                selection_type.AWAY: round(away_margin, 5)}
+
+    def home_no_bet(self):
+        draw_margin = np.diag( self._M, self._sgap ).sum()
+        away_margin = np.triu( self._M, self._sgap+1 ).sum()
+
+        draw_margin, away_margin = draw_margin / ( draw_margin + away_margin ), \
+                                   away_margin / ( draw_margin + away_margin )
+
+        return {selection_type.DRAW: round(draw_margin, 5),
+                selection_type.AWAY: round(away_margin, 5)}
+
+    def away_no_bet(self):
+        draw_margin = np.diag( self._M, self._sgap ).sum()
+        home_margin = np.tril( self._M, self._sgap-1 ).sum()
+
+        draw_margin, home_margin = draw_margin / ( draw_margin + home_margin ), \
+                                   home_margin / ( draw_margin + home_margin )
+
+        return {selection_type.DRAW: round(draw_margin, 5),
+                selection_type.HOME: round(home_margin, 5)}
 
     def over_under(self, line):
         """
@@ -349,3 +401,51 @@ class DynamicOddsCal( object ):
     def double_chance_over_under(self, line):
         raise NotImplementedError
 
+    def ttg_aggregated(self, ttg_min, ttg_max ):
+        """
+        calculate the probability in the range of [ ttg_min, ttg_max ]
+        and out of it, respectively
+
+        Args:
+            ttg_min: ttg >= ttg_min, should be whole number
+            ttg_max: ttg <= ttg_max, should be whole number
+        """
+        rotated_matrix = np.transpose( self._M )
+        rotated_matrix = rotated_matrix[::-1]
+
+        if ttg_min > ttg_max:
+            return { selection_type.YES: round(0, 5) }
+
+        if ttg_max - self._ssum < 0:
+            return { selection_type.YES: round(0, 5) }
+
+        prob_accumulated_up_bound = np.tril( ttg_max-self._ssum - (self.dim-1) ).sum()
+        prob_accumulated_dn_bound = np.tril( ttg_min-1-self._ssum - (self.dim-1)).sum()
+
+        prob_accumulated = prob_accumulated_up_bound - prob_accumulated_dn_bound
+
+        return { selection_type.YES: round(prob_accumulated, 5) }
+
+    def clean_sheet_home_team(self):
+        """
+        sum all the possibilities that away team goal = 0
+        sum( 0-0, 1-0, 2-0, ....)
+        """
+
+        yes_margin = self._M[:, 0].sum()
+        no_margin = 1 - yes_margin
+
+        return { selection_type.YES: round(yes_margin, 5),
+                 selection_type.NO: round(no_margin, 5) }
+
+    def clean_sheet_away_team(self):
+        """
+        sum all the possibilities that home team goal = 0
+        sum( 0-0, 0-1, 0-2, ....)
+        """
+
+        yes_margin = self._M[0, :].sum()
+        no_margin = 1 - yes_margin
+
+        return { selection_type.YES: round(yes_margin, 5),
+                 selection_type.NO: round(no_margin, 5) }
