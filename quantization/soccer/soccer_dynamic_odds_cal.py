@@ -419,10 +419,10 @@ class DynamicOddsCal( object ):
         if ttg_max - self._ssum < 0:
             return { selection_type.YES: round(0, 5) }
 
-        prob_accumulated_up_bound = np.tril( ttg_max-self._ssum - (self.dim-1) ).sum()
-        prob_accumulated_dn_bound = np.tril( ttg_min-1-self._ssum - (self.dim-1)).sum()
+        accumulated_up = np.tril( rotated_matrix, ttg_max-self._ssum - (self.dim-1) ).sum()
+        accumulated_dn = np.tril( rotated_matrix, ttg_min-1-self._ssum - (self.dim-1)).sum()
 
-        prob_accumulated = prob_accumulated_up_bound - prob_accumulated_dn_bound
+        prob_accumulated = accumulated_up - accumulated_dn
 
         return { selection_type.YES: round(prob_accumulated, 5) }
 
@@ -449,3 +449,85 @@ class DynamicOddsCal( object ):
 
         return { selection_type.YES: round(yes_margin, 5),
                  selection_type.NO: round(no_margin, 5) }
+
+    def home_odd_even(self):
+        if self.present_score[0] % 2 == 0:
+            return { selection_type.ODD: self.home_goal_prob[1::2].sum(),
+                     selection_type.EVEN: self.home_goal_prob[::2].sum() }
+
+        return { selection_type.ODD: self.home_goal_prob[::2].sum(),
+                 selection_type.EVEN: self.home_goal_prob[1::2].sum() }
+
+    def away_odd_even(self):
+        if self.present_score[1] % 2 == 0:
+            return { selection_type.ODD: self.away_goal_prob[1::2].sum(),
+                     selection_type.EVEN: self.away_goal_prob[::2].sum() }
+
+        return { selection_type.ODD: self.away_goal_prob[::2].sum(),
+                 selection_type.EVEN: self.away_goal_prob[1::2].sum() }
+
+    def match_bet_and_totals(self, line):
+        """
+        calculate the probability of HAD and over/under,
+        got six outcomes:
+            Home & over
+            Home & under
+            Away & over
+            Away & under
+            Draw & over
+            Draw & under
+        Args:
+            line: the line for over/under type
+            must be { 0.5, 1.5, 2.5, .... }
+        """
+        # split the probability matrix into three parts
+
+        home_matrix = np.tril( self._M, self._sgap-1 )
+        away_matrix = np.triu( self._M, self._sgap+1 )
+        draw_matrix = np.diag( np.diag( self._M, self._sgap ), self._sgap )
+
+        # rotate the 3 matrix into there over/under format, respectively
+        rotated_home = np.transpose( home_matrix )
+        rotated_home = rotated_home[::-1]
+        rotated_away = np.transpose( away_matrix )
+        rotated_away = rotated_away[::-1]
+        rotated_draw = np.transpose( draw_matrix )
+        rotated_draw = rotated_draw[::-1]
+
+        line = line - self._ssum
+
+        home_under_margin = np.tril( rotated_home, math.floor(line) - (self.dim - 1)).sum()
+        home_over_margin = rotated_home.sum() - home_under_margin
+        away_under_margin = np.tril( rotated_away, math.floor(line) - (self.dim - 1)).sum()
+        away_over_margin = rotated_away.sum() - away_under_margin
+        draw_under_margin = np.tril( rotated_draw, math.floor(line) - (self.dim - 1)).sum()
+        draw_over_margin = rotated_draw.sum() - draw_under_margin
+
+        return { selection_type.HOME_AND_UNDER: home_under_margin,
+                 selection_type.HOME_AND_OVER: home_over_margin,
+                 selection_type.AWAY_AND_UNDER: away_under_margin,
+                 selection_type.AWAY_AND_OVER: away_over_margin,
+                 selection_type.DRAW_AND_UNDER: draw_under_margin,
+                 selection_type.DRAW_AND_OVER: draw_over_margin }
+
+
+    def match_bet_and_both_team_score(self):
+        """
+        composite game type, HAD and BOTH_TEAM_SCORE: yes/not
+
+        only for pre-match
+        """
+        draw_no = self._M[0][0]
+        home_no = self._M[:,0][1:].sum()
+        away_no = self._M[0,:][1:].sum()
+
+        draw_yes = np.diag( self._M, 0 ).sum() - draw_no
+        home_yes = np.tril( self._M, -1 ).sum() - home_no
+        away_yes = np.triu( self._M, 1 ).sum() - away_no
+
+        return { selection_type.HOME_AND_YES: home_yes,
+                 selection_type.AWAY_AND_YES: away_yes,
+                 selection_type.DRAW_AND_YES: draw_yes,
+                 selection_type.HOME_AND_NO: home_no,
+                 selection_type.AWAY_AND_NO: away_no,
+                 selection_type.DRAW_AND_NO: draw_no }

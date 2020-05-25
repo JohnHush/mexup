@@ -152,6 +152,22 @@ class selection_type(  ):
     #客胜
     AWAY_WIN=17
 
+    # composite type
+    HOME_AND_OVER=18
+    HOME_AND_UNDER=19
+    AWAY_AND_OVER=20
+    AWAY_AND_UNDER=21
+    DRAW_AND_OVER=22
+    DRAW_AND_UNDER=23
+
+    HOME_AND_YES=24
+    HOME_AND_NO=25
+    AWAY_AND_YES=26
+    AWAY_AND_NO=27
+    DRAW_AND_YES=28
+    DRAW_AND_NO=29
+
+
 class period(  ):
     # 足球全场
     SOCCER_FULL_TIME = 1001

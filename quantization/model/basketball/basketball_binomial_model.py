@@ -108,7 +108,7 @@ class BasBinomialModel( object ):
         return llk/count
 if __name__=='__main__':
     M = BasBinomialModel()
-    M.prepareDataset(xls='StartClosePrices-5.xls', random_seed=3 )
+    M.prepareDataset(xls='../../StartClosePrices-5.xls', random_seed=3 )
     M.paramsEvaluation()
 
     llk_test = M.log_likelihood()
