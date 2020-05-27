@@ -230,13 +230,14 @@ class DixonColesModel( object ):
         return home_exp, away_exp, self.model.x[-2]
 
 if __name__ == "__main__":
-    ds = XlsData( xls='./StartClosePrices-5.xls' )
-    ds.view()
+    # ds = XlsData( xls='./StartClosePrices-5.xls' )
+    # ds.view()
 
-    # ds = UrlData( url = [ './1920_E0.csv' , './1819_E0.csv', './1718_E0.csv' ])
-    # dcm = DixonColesModel( ds )
-    #
-    # dcm.solve()
+    ds = UrlData( url = [ '../../1920_E0.csv'  ])
+    dcm = DixonColesModel( ds )
+
+    dcm.solve()
+    print( dcm.model.x )
     # dcm.save_model( './EnglandPremierLeague_17181920_dcm.model')
     # dcm.load_model( './EnglandPremierLeague_1718_dcm.model' )
     # print( dcm.model.x )

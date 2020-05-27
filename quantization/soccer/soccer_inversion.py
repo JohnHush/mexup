@@ -110,6 +110,10 @@ def infer_ttg_sup(config):
 
         home_exp = (ttg + sup) / 2
         away_exp = (ttg - sup) / 2
+
+        home_exp = max( home_exp, 0.00001 )
+        away_exp = max( away_exp, 0.00001 )
+
         dim = 18 + int(max(home_exp, away_exp))
 
         ssum = scores[0] + scores[1]
