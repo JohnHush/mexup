@@ -6,7 +6,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from random import randint
-
+'''
+优化点：
+1.类的初始化
+'''
 # 如何构建队伍类，
 class Team():
 
@@ -80,7 +83,7 @@ class Match():
         self.winteam = df.iloc[0]['WinningTeam']
         self.home_total_score = df.iloc[-1]['HomeScore']
         self.away_total_score = df.iloc[-1]['AwayScore']
-        
+        self.count_lam()
         #
     @staticmethod
     def data_process(df):
@@ -158,7 +161,6 @@ def main():
         game_k = df[df['URL'].isin([game_num.index[_]])]
         df_game = Match.data_process(game_k)
         match = Match(df_game)
-        match.count_lam()
         lams.append(match.lam)
         if match.home_team not in Teams.keys():
         #没有队伍类的时候，新建一个队伍实例
@@ -197,7 +199,6 @@ def main():
     
     game_test = Match.data_process(df)
     match_test = Match(df_game)
-    match_test.count_lam()
     
     home_team = Teams[match_test.home_team]
     away_team = Teams[match_test.away_team]
