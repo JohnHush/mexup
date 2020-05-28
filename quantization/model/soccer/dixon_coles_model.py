@@ -166,6 +166,204 @@ class DixonColesModel( object ):
             X = train_features[isample]
             y = train_y[isample]
 
+            home_indices = np.where( np.array(X[0])!=0 )[0]
+            away_indices = np.where( np.array(X[1])!=0 )[0]
+
+            home_exp = params[home_indices[0]] * params[home_indices[1]] * params[-1]
+            away_exp = params[away_indices[0]] * params[away_indices[1]]
+
+            # home_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[0]) ).sum() + params[-1] )
+            # away_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[1]) ).sum() )
+
+            obj = obj - DixonColesModel._likelihood( y[0], y[1] , home_exp, away_exp, params[-2] )
+
+        return obj
+
+    def _grad( self, params ):
+        train_features, train_y = self.ds.get_train_data()
+
+        g = np.zeros( len(params) )
+
+        for isample in range( len(train_features) ):
+            X = train_features[isample]
+            y = train_y[isample]
+
+            home_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[0]) ).sum() + params[-1] )
+            away_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[1]) ).sum() )
+
+            home_exp = min( home_exp, 5 )
+            away_exp = min( away_exp, 5 )
+
+            home_indices = np.where( np.array(X[0])!=0 )[0]
+            away_indices = np.where( np.array(X[1])!=0 )[0]
+
+            home_goal = int(y[0])
+            away_goal = int(y[1])
+
+            # accumulate derivative of L/alpha and L/beta of Home
+            if home_goal==0 and away_goal==0:
+                g[home_indices[0]] += home_goal - home_exp + (-home_exp * away_exp * params[-2])/\
+                                        ( 1-home_exp * away_exp * params[-2])
+                g[home_indices[1]] += home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
+                                      (1 - home_exp * away_exp * params[-2])
+
+                g[-1] += home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
+                                      (1 - home_exp * away_exp * params[-2])
+
+            elif home_goal==0 and away_goal==1:
+                g[home_indices[0]] += home_goal - home_exp + ( home_exp * params[-2] )/\
+                                        ( 1+ home_exp * params[-2] )
+                g[home_indices[1]] += home_goal - home_exp + (home_exp * params[-2]) / \
+                                      (1 + home_exp * params[-2])
+
+                g[-1] += home_goal - home_exp + (home_exp * params[-2]) / \
+                                      (1 + home_exp * params[-2])
+            else:
+                g[ home_indices[0] ] += home_goal - home_exp
+                g[ home_indices[1] ] += home_goal - home_exp
+                g[-1] += home_goal - home_exp
+
+            # accumulate another part
+            if home_goal==0 and away_goal==0:
+                g[away_indices[0]] += away_goal - away_exp + (-home_exp * away_exp * params[-2])/\
+                                      (1-home_exp * away_exp * params[-2])
+                g[away_indices[1]] += away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
+                                      (1 - home_exp * away_exp * params[-2])
+            elif home_goal==1 and away_goal==0:
+                g[away_indices[0]] += away_goal - away_exp + ( away_exp * params[-2])/\
+                                      ( 1+ away_exp * params[-2] )
+                g[away_indices[1]] += away_goal - away_exp + (away_exp * params[-2]) / \
+                                      (1 + away_exp * params[-2])
+            else:
+                g[away_indices[0]] += away_goal - away_exp
+                g[away_indices[1]] += away_goal - away_exp
+
+            if home_goal==0 and away_goal==0:
+                g[-2] += ( -home_exp * away_exp )/ ( 1-home_exp * away_exp * params[-2] )
+            elif home_goal==0 and away_goal==1:
+                g[-2] += home_exp / ( 1 + home_exp * params[-2] )
+            elif home_goal==1 and away_goal==0:
+                g[-2] += away_exp / ( 1 + away_exp * params[-2] )
+            elif home_goal==1 and away_goal==1:
+                g[-2] += -1 / ( 1- params[-2] )
+            else:
+                pass
+
+        return g
+
+    def solve(self,
+              **kwargs ):
+
+        options = kwargs.get( 'options', { 'disp': True, 'maxiter': 100} )
+        constraints = kwargs.get( 'constraints', [ { 'type': 'eq', 'fun': lambda x: sum(x[:self.dim]) -self.dim } ] )
+
+        # init_vals = np.concatenate( ( np.random.uniform(0,1, self.dim ),
+        #                               np.random.uniform(0,-1, self.dim ),
+        #                               [0.],
+        #                               [1.]) )
+        init_vals = np.concatenate( ( np.ones(self.dim) / self.dim,
+                                      np.ones(self.dim) / (-self.dim),
+                                      [0.],
+                                      [1.]) )
+
+        self.model = minimize( self._objective_values_sum,
+                               init_vals,
+                               options = options,
+                               constraints = constraints,
+                               # jac=self._grad,
+                               **kwargs )
+
+        return self.model
+
+    def save_model(self, fn ):
+        with open( fn , 'wb' ) as ooo:
+            pickle.dump( self.model, ooo )
+
+    def load_model(self, fn ):
+        with open( fn, 'rb' ) as iii:
+            self.model = pickle.load( iii )
+
+    def infer_prob_matrix(self, home, away , num = 10 ):
+        # maximum goal of each side = 10
+        home_exp, away_exp, rho = self.infer_exp_rho( home, away )
+        home_goal_prob = np.array( [ poisson.pmf( g, home_exp ) for g in range( num + 1 ) ] )
+        away_goal_prob = np.array( [ poisson.pmf( g, away_exp ) for g in range( num + 1 ) ] )
+
+        calibration_matrix = np.array( [ [self._calibration_matrix( hg, ag, home_exp, away_exp, rho ) \
+                                          for ag in range(2) ] for hg in range(2) ] )
+
+        united_prob_matrix = np.outer( home_goal_prob, away_goal_prob )
+        united_prob_matrix[:2, :2] = united_prob_matrix[:2, :2] * calibration_matrix
+
+        return united_prob_matrix
+
+    def infer_team_strength(self, team ):
+        # team stength is defined as TEAM_ATTACK - TEAM_DEFENCE
+        team_one_hot = self.ds.encoder.transform( [[team,team]] )[0]
+        team_one_hot[ self.dim : ] *= -1
+
+        return ( team_one_hot * self.model.x[:2*self.dim] ).sum()
+
+    def infer_exp_rho(self, home, away ):
+        home_exp = np.exp( ( self.ds.encoder.transform( [[home,away]] ) * \
+                             np.array( self.model.x[:2*self.dim] ) ).sum() + self.model.x[-1] )
+        away_exp = np.exp( ( self.ds.encoder.transform( [[away,home]] ) * \
+                             np.array( self.model.x[:2*self.dim] ) ).sum() )
+
+        return home_exp, away_exp, self.model.x[-2]
+
+class DixonColesModel_v1( object ):
+    '''
+    ref: Modelling Association Football Scores and Inefficiencies in the Football
+    betting Market, 1997, Mark Dixon and Stuart G. Coles
+
+    static model without weighting on match by time
+    '''
+    def __init__(self, ds ):
+        self.ds = ds
+        self.X, self.y = self.ds.get_train_data()
+        self.dim = len( self.X[0][0] ) // 2
+
+    def _preprocessing(self):
+        pass
+
+    @staticmethod
+    def _calibration_matrix( home_goal,
+                             away_goal,
+                             home_exp,
+                             away_exp,
+                             rho ):
+        if home_goal == 0 and away_goal == 0:
+            return 1. - home_exp * away_exp * rho
+        elif home_goal == 0 and away_goal == 1:
+            return 1. + home_exp * rho
+        elif home_goal == 1 and away_goal == 0:
+            return 1. + away_exp * rho
+        elif home_goal == 1 and away_goal == 1:
+            return 1. - rho
+        else:
+            return 1.
+
+    @staticmethod
+    def _likelihood( home_goal, # home goal in the match
+                     away_goal, # away goal in the match
+                     home_exp, # MLE param.
+                     away_exp, # MLE param.
+                     rho): # MLE param. calibration coefficient, degrades to Poisson Model when rho = 0
+
+        return np.log( DixonColesModel._calibration_matrix( home_goal, away_goal, home_exp, away_exp, rho ) + \
+                       np.finfo(float).eps) + \
+               np.log( poisson.pmf( home_goal, home_exp ) + np.finfo(float).eps ) + \
+               np.log( poisson.pmf( away_goal, away_exp ) + np.finfo(float).eps )
+
+    def _objective_values_sum( self, params ):
+        train_features, train_y = self.ds.get_train_data()
+        obj = 0.
+
+        for isample in range( len(train_features) ):
+            X = train_features[isample]
+            y = train_y[isample]
+
             home_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[0]) ).sum() + params[-1] )
             away_exp = np.exp( ( np.array(params[: 2* self.dim]) * np.array(X[1]) ).sum() )
 
@@ -185,10 +383,10 @@ class DixonColesModel( object ):
                                       [1.]) )
 
         self.model = minimize( self._objective_values_sum,
-                           init_vals,
-                           options = options,
-                           constraints = constraints,
-                           **kwargs )
+                               init_vals,
+                               options = options,
+                               constraints = constraints,
+                               **kwargs )
 
         return self.model
 

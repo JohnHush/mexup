@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 from quantization.soccer.soccer_inversion import *
+from quantization.model.soccer.dixon_coles_model import *
 
 pd.set_option('display.max_columns', None )
 
@@ -70,6 +71,24 @@ def infer_sup_ttg_from_market():
     df.to_csv( '../../england_10years_data_sup_ttg_market.csv', index=False )
 
 
+def check_dixon_coles_model_with_without_gradient():
+    ds = UrlData(url=['../../1920_E0.csv'])
+    dcm = DixonColesModel(ds)
+
+    dcm.solve()
+    # dcm.save_model('./england_league0_1920_dcm2.model')
+
+    # dcm.load_model( './england_league0_1920_dcm.model' )
+    # home_exp, away_exp, rho = dcm.infer_exp_rho('Arsenal', 'Southampton')
+    # print( home_exp, away_exp, rho )
+    # home_exp, away_exp, rho = dcm.infer_exp_rho('Chelsea', 'Watford')
+    # print( home_exp, away_exp, rho )
+    # home_exp, away_exp, rho = dcm.infer_exp_rho('Chelsea', 'Man City')
+    # print( home_exp, away_exp, rho )
+    #
+    print(dcm.model.x)
+
 
 # collect_data()
-infer_sup_ttg_from_market()
+# infer_sup_ttg_from_market()
+check_dixon_coles_model_with_without_gradient()
