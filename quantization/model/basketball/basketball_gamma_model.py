@@ -114,7 +114,8 @@ class Match():
         df_mindata['AwayMinScore'] = df_mindata['AwayScore']-df_mindata['AwayScore'].shift(1)
         df_mindata['AwayMinScore'].fillna(df_mindata['AwayScore'],inplace=True)
         return df_mindata
-
+    
+    #计算lambda
     def count_lam(self):
         # 估计lam,mean_home,
         df_mindata = self.df
@@ -145,16 +146,15 @@ def min_process(df):
 def rand_match(df):
     game_num = df['URL'].value_counts()
     #随机挑选出一场比赛
-    rd_index = randint(int(len(game_num)*0.1)+1,len(game_num))
+    rd_index = randint(int(len(game_num)*0.5)+1,len(game_num))
     df_rd_game = df[df['URL'].isin([game_num.index[rd_index]])]
     return df_rd_game
 
-
-
-def main():
+#历史估参
+def sample_para(df):
     lams = []
     Teams = {}
-    df = pd.read_csv('/Users/frank/Documents/篮球Gamma模型/数据/NBA-PBP_2016-2017.csv')
+    
     game_num = df[df['GameType']=='regular']['URL'].value_counts()
     for _ in range(0,int(len(game_num)*0.5)):
         print(f'第{_}场比赛'*5)
@@ -185,10 +185,15 @@ def main():
             key = match.away_team
             print(f'客队是{key},更新数据')
             Teams[key].fresh_data(df_game)
-
     print(lams)
     print(Teams)
+    return lams, Teams
 
+def main():
+    #随机挑选一场比赛，用于输出概率
+    df = pd.read_csv('/Users/frank/Documents/篮球Gamma模型/数据/NBA-PBP_2016-2017.csv')
+    lams,Teams = sample_para(df)
+    
     lam_mean = np.mean(lams)
     lam_var = np.var(lams)
     alpha = lam_mean/lam_var
@@ -196,18 +201,60 @@ def main():
     
     
     a_test = rand_match(df)
-    
-    game_test = Match.data_process(df)
-    match_test = Match(df_game)
+    game_test = Match.data_process(a_test)
+    match_test = Match(game_test)
     
     home_team = Teams[match_test.home_team]
     away_team = Teams[match_test.away_team]
     
     home_team.para_est(alpha,beta)
     away_team.para_est(alpha,beta)
+    
+    mu_home = home_team.home_mu
+    mu_away = away_team.away_mu
+    
     lam_bayes = beta/alpha
+    fake_home_gamma=[]
+    fake_away_gamma=[]
+    monte_carlo_num = 10000
+    for _ in range(monte_carlo_num):
+        _home = np.rint(np.random.gamma(mu_home,1/lam_bayes,48))
+        _away = np.rint(np.random.gamma(mu_away,1/lam_bayes,48))
+        fake_home_gamma.append(_home.sum())
+        fake_away_gamma.append(_away.sum())
     
-    #实际上lam = ((home_team.home_mu+away_team.away_mu)+beta)/((awaw_score+home_score)+alpha)
+    #分数之差
+    odd_ratio(fake_home_gamma,fake_away_gamma,play_style=1)
+    odd_ratio(fake_home_gamma,fake_away_gamma,play_style=2)
+    odd_ratio(fake_home_gamma,fake_away_gamma,play_style=3)
+
+def odd_ratio(fake_home_gamma,fake_away_gamma,tbp=0.9,handicap = 3,total=200,play_style = 1):
+    if play_style == 1:#胜负
+        win_ratio = (np.array(fake_home_gamma)>np.array(fake_away_gamma))\
+            .sum()/len(fake_home_gamma)
+        win_odd = (1/win_ratio)*tbp
+        lose_odd = (1/(1-win_ratio))*tbp
+        print(f'主场胜赔率是：{win_odd}')
+        print(f'主场负赔率是：{lose_odd}')
+        return win_odd,lose_odd
+    elif play_style == 2:#让分
+        win_ratio = (np.array(fake_home_gamma)-handicap>np.array(fake_away_gamma))\
+            .sum()/len(fake_home_gamma)
+        win_odd = (1/win_ratio)*tbp
+        lose_odd = (1/(1-win_ratio))*tbp
+        print(f'主场让{handicap}胜赔率是：{win_odd}')
+        print(f'主场让{handicap}负赔率是：{lose_odd}')
+    elif play_style == 3:#总分大小
+        win_ratio = ((np.array(fake_home_gamma)+np.array(fake_away_gamma))>total)\
+            .sum()/len(fake_home_gamma)
+        win_odd = (1/win_ratio)*tbp
+        lose_odd = (1/(1-win_ratio))*tbp
+        print(f'总分大于{total}赔率是：{win_odd}')
+        print(f'总分小于{total}赔率是：{lose_odd}')
+        
+        
+
     
+#盘中实际上lam = ((home_team.home_mu+away_team.away_mu)+beta)/((awaw_score+home_score)+alpha)
 if __name__ == '__main__':
     main()
