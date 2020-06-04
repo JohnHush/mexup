@@ -4,6 +4,25 @@ from quantization.constants import market_type, period
 from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal, DocConfig
 from quantization.soccer.soccer_inversion import InferSoccerConfig, infer_ttg_sup
 
+def time_checking( stage, running_time, ht_add, ft_add ):
+    if stage ==4 and running_time > 0:
+        raise Exception( "stage =4, running time > 0 " )
+    if stage ==6 and running_time >= 45 + ht_add + 5:
+        raise Exception( "stage =6, running time > 45 + ht_add + 5" )
+    if stage ==7 and running_time != 45:
+        raise Exception( "stage =7, running time != 45 " )
+    if stage ==8 and running_time >= 90 + ft_add + 5:
+        raise Exception( "stage =8, running time >= 90 + ft_add + 5 " )
+    if stage==13 and running_time != 90:
+        raise Exception( "stage =13, running time != 90 " )
+
+def sup_ttg_checking( sup, ttg ):
+    if abs( sup ) >= ttg:
+        raise Exception( " abs(sup) >= ttg ")
+
+    if abs( sup ) >= 10 or ttg >= 16:
+        raise Exception( "sup or ttg has extreme value")
+
 
 def calculate_base_sup_ttg(mu_now, stage, running_time, ht_add, ft_add, decay):
     """
@@ -121,6 +140,8 @@ def INTERFACE_infer_soccer_sup_ttg(c: InferSoccerConfig,
     Returns: [sup_now, sup_original], [ttg_now, ttg_original]
 
     """
+    time_checking( stage, running_time, ht_add, ft_add )
+
     sup_now, ttg_now = infer_ttg_sup(c)
     sup_original, ttg_original = calculate_base_sup_ttg( [sup_now, ttg_now],
                                                          stage,
@@ -153,6 +174,10 @@ def INTERFACE_collect_soccer_odds( sup_ttg,
     recent_score = scores[1]
     second_half_score = [ scores[1][0]-scores[0][0], scores[1][1]-scores[0][1] ]
     stage, running_time, ht_add, ft_add = clock[:4]
+
+    # checking
+    time_checking( stage, running_time, ht_add, ft_add )
+    sup_ttg_checking( sup_ttg[0], sup_ttg[1] )
 
     decayed_sup_ttg_list = calculate_decayed_sup_ttg( sup_ttg,
                                                       stage,
