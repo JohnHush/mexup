@@ -85,6 +85,8 @@ class DataE0(object):
         df.drop(['Avg>2.5', 'Avg<2.5', 'AHh', 'AvgAHH', 'AvgAHA'], axis=1, inplace=True)
         df.dropna(axis=0, inplace=True)
 
+        df = df.sort_values( by='Date' )
+
         def _infer_market_sup_ttg_fn(series):
             config = InferSoccerConfig()
             config.ou_line = 2.5
@@ -106,7 +108,7 @@ class DataE0(object):
 
         self._df = df
 
-    def split_ds_by_time(self, y=2018, m=1, d=1 ):
+    def split_ds_by_time(self, y=2018, m=1, d=1, epsilon=0. , train_range= 200 ):
         """
         split the dataframe into trainset and testset
         in a dict form
@@ -115,12 +117,20 @@ class DataE0(object):
             y:  year
             m: month
             d: day
+            epsilon: the time-fading parameter in DC model
 
         Returns:
 
         """
-        df_train = self._df[self._df.Date <  pd.Timestamp(y, m, d)]
-        df_test  = self._df[self._df.Date >= pd.Timestamp(y, m, d)]
+        train_start_date = pd.Timestamp(y, m, d) - train_range * pd.Timedelta(days=3.5)
+
+        df_train = self._df[(self._df.Date <  pd.Timestamp(y, m, d)) & \
+                            (self._df.Date > train_start_date) ].copy()
+        df_test  = self._df[self._df.Date >= pd.Timestamp(y, m, d)].copy()
+
+        df_test['fading']  = 1.
+        df_train['fading'] = df_train['Date'].map(
+            lambda s:np.exp( -epsilon* (pd.Timestamp(y, m, d)-s) / pd.Timedelta(days=3.5) ))
 
         self._train_dict = df_train.to_dict( orient='records' )
         self._test_dict  = df_test.to_dict( orient='records' )
@@ -161,6 +171,10 @@ class DixonColesModel_v3( object ):
             team_set.add( d['HomeTeam'] )
             team_set.add( d['AwayTeam'] )
 
+        for d in self._ds.test_dict():
+            team_set.add( d['HomeTeam'] )
+            team_set.add( d['AwayTeam'] )
+
         self._team_num = len( team_set )
 
         team_list = sorted( list( team_set ) )
@@ -195,6 +209,8 @@ class DixonColesModel_v3( object ):
             home_ind = self._team_index[d['HomeTeam']]
             away_ind = self._team_index[d['AwayTeam']]
 
+            ff = d['fading']
+
             home_exp = np.exp( params[home_ind] + params[away_ind+self._team_num] + params[-1] )
             away_exp = np.exp( params[away_ind] + params[home_ind+self._team_num] )
 
@@ -203,50 +219,50 @@ class DixonColesModel_v3( object ):
 
             # accumulate derivative of L/alpha and L/beta of Home
             if home_goal==0 and away_goal==0:
-                g[home_indices[0]] += home_goal - home_exp + (-home_exp * away_exp * params[-2])/ \
-                                      ( 1-home_exp * away_exp * params[-2])
-                g[home_indices[1]] += home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                                      (1 - home_exp * away_exp * params[-2])
+                g[home_indices[0]] += ff *( home_goal - home_exp + (-home_exp * away_exp * params[-2])/ \
+                                      ( 1-home_exp * away_exp * params[-2]) )
+                g[home_indices[1]] += ff *( home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
+                                      (1 - home_exp * away_exp * params[-2]) )
 
-                g[-1] += home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                         (1 - home_exp * away_exp * params[-2])
+                g[-1] += ff *( home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
+                         (1 - home_exp * away_exp * params[-2]) )
 
             elif home_goal==0 and away_goal==1:
-                g[home_indices[0]] += home_goal - home_exp + ( home_exp * params[-2] )/ \
-                                      ( 1+ home_exp * params[-2] )
-                g[home_indices[1]] += home_goal - home_exp + (home_exp * params[-2]) / \
-                                      (1 + home_exp * params[-2])
+                g[home_indices[0]] += ff *( home_goal - home_exp + ( home_exp * params[-2] )/ \
+                                      ( 1+ home_exp * params[-2] ) )
+                g[home_indices[1]] += ff *( home_goal - home_exp + (home_exp * params[-2]) / \
+                                      (1 + home_exp * params[-2]) )
 
-                g[-1] += home_goal - home_exp + (home_exp * params[-2]) / \
-                         (1 + home_exp * params[-2])
+                g[-1] += ff *( home_goal - home_exp + (home_exp * params[-2]) / \
+                         (1 + home_exp * params[-2]) )
             else:
-                g[ home_indices[0] ] += home_goal - home_exp
-                g[ home_indices[1] ] += home_goal - home_exp
-                g[-1] += home_goal - home_exp
+                g[ home_indices[0] ] += ( home_goal - home_exp ) * ff
+                g[ home_indices[1] ] += ( home_goal - home_exp ) * ff
+                g[-1] += ( home_goal - home_exp ) * ff
 
             # accumulate another part
             if home_goal==0 and away_goal==0:
-                g[away_indices[0]] += away_goal - away_exp + (-home_exp * away_exp * params[-2])/ \
-                                      (1-home_exp * away_exp * params[-2])
-                g[away_indices[1]] += away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
-                                      (1 - home_exp * away_exp * params[-2])
+                g[away_indices[0]] += ff *( away_goal - away_exp + (-home_exp * away_exp * params[-2])/ \
+                                      (1-home_exp * away_exp * params[-2]) )
+                g[away_indices[1]] += ff *( away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
+                                      (1 - home_exp * away_exp * params[-2]) )
             elif home_goal==1 and away_goal==0:
-                g[away_indices[0]] += away_goal - away_exp + ( away_exp * params[-2])/ \
-                                      ( 1+ away_exp * params[-2] )
-                g[away_indices[1]] += away_goal - away_exp + (away_exp * params[-2]) / \
-                                      (1 + away_exp * params[-2])
+                g[away_indices[0]] += ff *( away_goal - away_exp + ( away_exp * params[-2])/ \
+                                      ( 1+ away_exp * params[-2] ) )
+                g[away_indices[1]] += ff *( away_goal - away_exp + (away_exp * params[-2]) / \
+                                      (1 + away_exp * params[-2]) )
             else:
-                g[away_indices[0]] += away_goal - away_exp
-                g[away_indices[1]] += away_goal - away_exp
+                g[away_indices[0]] += ff *( away_goal - away_exp )
+                g[away_indices[1]] += ff *( away_goal - away_exp )
 
             if home_goal==0 and away_goal==0:
-                g[-2] += ( -home_exp * away_exp )/ ( 1-home_exp * away_exp * params[-2] )
+                g[-2] += ( ( -home_exp * away_exp )/ ( 1-home_exp * away_exp * params[-2] ) )*ff
             elif home_goal==0 and away_goal==1:
-                g[-2] += home_exp / ( 1 + home_exp * params[-2] )
+                g[-2] += ( home_exp / ( 1 + home_exp * params[-2] ) ) *ff
             elif home_goal==1 and away_goal==0:
-                g[-2] += away_exp / ( 1 + away_exp * params[-2] )
+                g[-2] += ( away_exp / ( 1 + away_exp * params[-2] ) ) *ff
             elif home_goal==1 and away_goal==1:
-                g[-2] += -1 / ( 1- params[-2] )
+                g[-2] += ( -1 / ( 1- params[-2] ) ) *ff
             else:
                 pass
 
@@ -276,6 +292,8 @@ class DixonColesModel_v3( object ):
             home_ind = self._team_index[d['HomeTeam']]
             away_ind = self._team_index[d['AwayTeam']]
 
+            fading_factor = d['fading']
+
             home_exp = np.exp( params[home_ind] + params[away_ind+self._team_num] + params[-1] )
             away_exp = np.exp( params[away_ind] + params[home_ind+self._team_num] )
 
@@ -283,7 +301,7 @@ class DixonColesModel_v3( object ):
                                                         away_goal,
                                                         home_exp,
                                                         away_exp,
-                                                        params[-2] )
+                                                        params[-2] ) * fading_factor
 
         return obj
 
@@ -307,6 +325,69 @@ class DixonColesModel_v3( object ):
                                **kwargs )
 
         return self.model
+
+    def get_tons_of_model(self, **kwargs ):
+        # TODO
+        # 1. only keep matches in 200 units distance
+        # 2. save all the model into a directory
+
+        start_time = pd.Timestamp( 2011, 6, 1 )
+        time_step = pd.Timedelta( days=7 )
+
+        dir_name = kwargs.get( 'dir_name', 'model_dir' )
+        dir_path = os.path.join( os.path.abspath('./'), dir_name )
+
+        if not os.path.exists( dir_path ):
+            os.makedirs( dir_path )
+
+        df_time_start = self._ds._df.loc[0, 'Date']
+        df_time_end = self._ds._df.loc[len(self._ds._df)-1, 'Date']
+
+        split_time = start_time
+        init_vals = np.concatenate((np.random.uniform(0, 1, self._team_num),
+                                    np.random.uniform(0, -1, self._team_num),
+                                    [0.],
+                                    [1.]))
+
+        while split_time < df_time_end:
+            split_time += time_step
+
+            # split data into Train and Test part
+            self._ds.split_ds_by_time( y=split_time.year,
+                                       m=split_time.month,
+                                       d=split_time.day,
+                                       epsilon=0.0065,
+                                       train_range=200 )
+
+            # print( split_time )
+
+            split_time_str = split_time.strftime('%Y-%m-%d')
+
+            model_name = os.path.join( dir_path, split_time_str + '.model' )
+            print( split_time_str)
+            # print( len( self._ds.train_dict() ) )
+
+            # give away data which is out of range
+
+            options = kwargs.get('options', {'disp': True, 'maxiter': 100})
+            constraints = kwargs.get('constraints',
+                                     [{'type': 'eq',
+                                       'fun': lambda x: sum(x[:self._team_num]) - self._team_num}])
+
+            self.model = minimize(self._objective_values_sum,
+                                  init_vals,
+                                  options=options,
+                                  constraints=constraints,
+                                  jac=self._grad,
+                                  **kwargs )
+
+            print( self.model.x )
+
+            with open( model_name, 'wb' ) as ooo:
+                pickle.dump( self.model, ooo )
+
+            init_vals = self.model.x
+
 
     def save_model(self, fn ):
         with open( fn , 'wb' ) as ooo:
@@ -353,7 +434,7 @@ class DixonColesModel_v3( object ):
             awayteam = series['AwayTeam']
 
             try:
-                home_exp, away_exp, rho = dcm.infer_exp_rho(hometeam, awayteam)
+                home_exp, away_exp, rho = self.infer_exp_rho(hometeam, awayteam)
             except:
                 home_exp, away_exp, rho = 0, 0, 0
 
@@ -642,10 +723,6 @@ class DixonColesModel( object ):
                                       np.random.uniform(0,-1, self.dim ),
                                       [0.],
                                       [1.]) )
-        # init_vals = np.concatenate( ( np.ones(self.dim) / self.dim,
-        #                               np.ones(self.dim) / (-self.dim),
-        #                               [0.],
-        #                               [1.]) )
 
         self.model = minimize( self._objective_values_sum,
                                init_vals,
@@ -831,8 +908,8 @@ if __name__ == "__main__":
 
 
     csv_list = [
-        '1011_E0.csv',
         '1112_E0.csv',
+        '1011_E0.csv',
         '1213_E0.csv',
         '1314_E0.csv',
         '1415_E0.csv',
@@ -847,16 +924,17 @@ if __name__ == "__main__":
     csv_list = [ os.path.join( os.path.abspath('../../'), c) for c in csv_list ]
 
     ds = DataE0( source=csv_list )
-    ds.split_ds_by_time( y=2011, m=6, d=1 )
+    ds.split_ds_by_time( y=2011, m=6, d=1, epsilon=0.0065 )
     dcm = DixonColesModel_v3( ds )
     t1 = time.time()
 
+    dcm.get_tons_of_model()
     # dcm.solve()
 
-    dcm.load_model( 'ttt.model' )
+    # dcm.load_model( 'ttt.model' )
 
-    print( dcm.model.x )
+    # print( dcm.model.x )
     print( 'Time : ', time.time() -t1 )
 
-    dcm.rmse()
+    # dcm.rmse()
 
