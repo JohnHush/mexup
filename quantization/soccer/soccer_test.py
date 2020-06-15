@@ -76,13 +76,13 @@ class TestClass( object ):
 
         assert (d1 == d2)
 
-    @pytest.mark.skip()
+    # @pytest.mark.skip()
     def test_INTERFACE_collect_odds(self):
         # match.set_value([0.5,2.7],[[0,0],[0,0]],[8,45*60,1*60,3*60],0.88,[1,-0.08])
-        stage = 7
+        stage = 4
         ht_add = 2 * 60
         ft_add = 3 * 60
-        running_time = 75 * 60
+        running_time = 0
         decay = 0.88
         mu = [ 0.5, 2.7 ]
         rho = -0.08
@@ -104,13 +104,14 @@ class TestClass( object ):
         # d2 = match.odds_output()[period.SOCCER_FIRST_HALF]
 
         d11 = r[period.SOCCER_FULL_TIME]
-        d22 = match.odds_output()[period.SOCCER_FULL_TIME]
+        # d22 = match.odds_output()[period.SOCCER_FULL_TIME]
 
-        # print( d1[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
+        # print( d11[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
+        print( d11[market_type.SOCCER_HOME_TO_WIN_EITHER_HALVE] )
         # print( d2[market_type.SOCCER_BOTH_TEAMS_TO_SCORE])
 
         # assert ( d1 == d2 )
-        assert ( d11 == d22 )
+        # assert ( d11 == d22 )
 
 
     @pytest.mark.skip()
@@ -148,6 +149,7 @@ class TestClass( object ):
                         doc_v2.refresh( sup_ttg=st, present_socre=s, adj_params=[1,r] )
                         assert doc_v1.asian_handicap( l ) == doc_v2.asian_handicap( l )
 
+    @pytest.mark.skip()
     def test_asian_handicap1(self):
         # doc_v1 = cal_soccer_odds()
         # doc_v2 = DynamicOddsCal( [0,0], [0,0], [1,0])

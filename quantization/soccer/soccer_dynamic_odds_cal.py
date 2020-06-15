@@ -531,3 +531,151 @@ class DynamicOddsCal( object ):
                  selection_type.HOME_AND_NO: home_no,
                  selection_type.AWAY_AND_NO: away_no,
                  selection_type.DRAW_AND_NO: draw_no }
+
+
+class MixedOddsCal( object ):
+    """
+    only support pre match odds calculation,
+    the score won't be considered
+    """
+    @staticmethod
+    def soccer_halftime_fulltime( sup_ttg_ht, sup_ttg_ft ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_ht, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_ft, present_socre=[0,0] )
+
+        ht_result = doc1.had()
+        ft_result = doc2.had()
+
+        ht_home, ht_draw, ht_away = ht_result[selection_type.HOME],\
+                                    ht_result[selection_type.DRAW],\
+                                    ht_result[selection_type.AWAY]
+
+        ft_home, ft_draw, ft_away = ft_result[selection_type.HOME], \
+                                    ft_result[selection_type.DRAW], \
+                                    ft_result[selection_type.AWAY]
+
+        return {
+            selection_type.HOME_AND_HOME: round(ht_home * ft_home, 5),
+            selection_type.HOME_AND_DRAW: round(ht_home * ft_draw, 5),
+            selection_type.HOME_AND_AWAY: round(ht_home * ft_away, 5),
+            selection_type.DRAW_AND_HOME: round(ht_draw * ft_home, 5),
+            selection_type.DRAW_AND_DRAW: round(ht_draw * ft_draw, 5),
+            selection_type.DRAW_AND_AWAY: round(ht_draw * ft_away, 5),
+            selection_type.AWAY_AND_HOME: round(ht_away * ft_home, 5),
+            selection_type.AWAY_AND_DRAW: round(ht_away * ft_draw, 5),
+            selection_type.AWAY_AND_AWAY: round(ht_away * ft_away, 5),
+        }
+
+    @staticmethod
+    def soccer_both_halves_over1_5( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.over_under( line=1.5 )
+        sh_result = doc2.over_under( line=1.5 )
+
+        both_over_yes = fh_result[selection_type.OVER] * sh_result[selection_type.OVER]
+        both_over_no  = 1. - both_over_yes
+
+        return { selection_type.YES: round( both_over_yes, 5),
+                 selection_type.NO: round( both_over_no, 5) }
+
+    @staticmethod
+    def soccer_both_halves_under1_5( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.over_under( line=1.5 )
+        sh_result = doc2.over_under( line=1.5 )
+
+        both_over_yes = fh_result[selection_type.UNDER] * sh_result[selection_type.UNDER]
+        both_over_no  = 1. - both_over_yes
+
+        return { selection_type.YES: round( both_over_yes, 5),
+                 selection_type.NO: round( both_over_no, 5) }
+
+    @staticmethod
+    def soccer_home_to_score_in_both_halves( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.over_under_home( line=0.5 )
+        sh_result = doc2.over_under_home( line=0.5 )
+
+        both_score_yes = fh_result[selection_type.OVER] * sh_result[selection_type.OVER]
+        both_score_no  = 1. - both_score_yes
+
+        return { selection_type.YES: round( both_score_yes, 5),
+                 selection_type.NO: round( both_score_no, 5) }
+    @staticmethod
+    def soccer_away_to_score_in_both_halves( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.over_under_away( line=0.5 )
+        sh_result = doc2.over_under_away( line=0.5 )
+
+        both_score_yes = fh_result[selection_type.OVER] * sh_result[selection_type.OVER]
+        both_score_no  = 1. - both_score_yes
+
+        return { selection_type.YES: round( both_score_yes, 5),
+                 selection_type.NO: round( both_score_no, 5) }
+
+    @staticmethod
+    def soccer_home_to_win_both_halves( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.had()
+        sh_result = doc2.had()
+
+        win_both_yes = fh_result[selection_type.HOME] * sh_result[selection_type.HOME]
+        win_both_no = 1. - win_both_yes
+
+        return { selection_type.YES: round( win_both_yes, 5),
+                 selection_type.NO: round( win_both_no, 5) }
+    @staticmethod
+    def soccer_away_to_win_both_halves( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.had()
+        sh_result = doc2.had()
+
+        win_both_yes = fh_result[selection_type.AWAY] * sh_result[selection_type.AWAY]
+        win_both_no = 1. - win_both_yes
+
+        return { selection_type.YES: round( win_both_yes, 5),
+                 selection_type.NO: round( win_both_no, 5) }
+
+    @staticmethod
+    def soccer_home_to_win_either_half( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.had()
+        sh_result = doc2.had()
+
+        win_either_half_no = (fh_result[selection_type.DRAW] + fh_result[selection_type.AWAY]) * \
+                             (sh_result[selection_type.DRAW] + sh_result[selection_type.AWAY])
+
+        win_either_half_yes = 1. - win_either_half_no
+
+        return { selection_type.YES: round( win_either_half_yes, 5),
+                 selection_type.NO: round( win_either_half_no, 5) }
+
+    @staticmethod
+    def soccer_away_to_win_either_half( sup_ttg_fh, sup_ttg_sh ):
+        doc1 = DynamicOddsCal( sup_ttg=sup_ttg_fh, present_socre=[0,0] )
+        doc2 = DynamicOddsCal( sup_ttg=sup_ttg_sh, present_socre=[0,0] )
+
+        fh_result = doc1.had()
+        sh_result = doc2.had()
+
+        win_either_half_no = (fh_result[selection_type.DRAW] + fh_result[selection_type.HOME]) * \
+                             (sh_result[selection_type.DRAW] + sh_result[selection_type.HOME])
+
+        win_either_half_yes = 1. - win_either_half_no
+
+        return { selection_type.YES: round( win_either_half_yes, 5),
+                 selection_type.NO: round( win_either_half_no, 5) }

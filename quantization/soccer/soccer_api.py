@@ -1,7 +1,7 @@
 import numpy as np
 
 from quantization.constants import market_type, period
-from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal, DocConfig
+from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal, DocConfig, MixedOddsCal
 from quantization.soccer.soccer_inversion import InferSoccerConfig, infer_ttg_sup
 
 def time_checking( stage, running_time, ht_add, ft_add ):
@@ -218,6 +218,42 @@ def INTERFACE_collect_soccer_odds( sup_ttg,
         doc_config2.away_ou_line_list = np.arange(0.5, 10.25, 0.25)
 
     r = {period.SOCCER_FULL_TIME: collect_games_odds(doc_config1)}
+
+    if stage == 4:
+        '''
+        add mixed style odds only in pre-match period
+        '''
+        sup_ttg_fh = decayed_sup_ttg_list[0]
+        sup_ttg_sh = decayed_sup_ttg_list[1]
+        sup_ttg_ft = decayed_sup_ttg_list[2]
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_HALFTIME_FULLTIME] = \
+            MixedOddsCal.soccer_halftime_fulltime( sup_ttg_fh, sup_ttg_ft )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_BOTH_HALVES_OVER1_5] = \
+            MixedOddsCal.soccer_both_halves_over1_5( sup_ttg_fh, sup_ttg_sh )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_BOTH_HALVES_UNDER1_5] = \
+            MixedOddsCal.soccer_both_halves_under1_5(sup_ttg_fh, sup_ttg_sh)
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_HOME_TO_SCORE_IN_BOTH_HALVES] = \
+            MixedOddsCal.soccer_home_to_score_in_both_halves( sup_ttg_fh, sup_ttg_sh )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_AWAY_TO_SCORE_IN_BOTH_HALVES] = \
+            MixedOddsCal.soccer_away_to_score_in_both_halves( sup_ttg_fh, sup_ttg_sh )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_HOME_TO_WIN_BOTH_HALVES] =\
+            MixedOddsCal.soccer_home_to_win_both_halves( sup_ttg_fh, sup_ttg_sh )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_HOME_TO_WIN_EITHER_HALVE] = \
+            MixedOddsCal.soccer_home_to_win_either_half( sup_ttg_fh, sup_ttg_sh )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_AWAY_TO_WIN_BOTH_HALVES] = \
+            MixedOddsCal.soccer_away_to_win_both_halves( sup_ttg_fh, sup_ttg_sh )
+
+        r[period.SOCCER_FULL_TIME][market_type.SOCCER_AWAY_TO_WIN_EITHER_HALVE] = \
+            MixedOddsCal.soccer_away_to_win_either_half( sup_ttg_fh, sup_ttg_sh )
+
     if sup_1st:
         r[period.SOCCER_FIRST_HALF] = collect_games_odds( doc_config2 )
     return r
