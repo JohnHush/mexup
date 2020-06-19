@@ -9,6 +9,7 @@ import pickle
 import matplotlib.pyplot as plt
 import os
 from quantization.soccer.soccer_inversion import *
+from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal
 
 pd.set_option('display.max_columns', None)
 
@@ -227,8 +228,8 @@ class DixonColesModel_v3(object):
         self._team_index = self._ds.team_index_dict()
         self._team_num = len( self._team_index.keys() )
 
-        # for k,v in self._team_index.items():
-            # print( k, v)
+        for k,v in self._team_index.items():
+            print( k, v)
 
         # distribute team index
         # self._team_index = {}
@@ -613,15 +614,198 @@ class DixonColesModel_v3(object):
 
             init_vals = model.x
 
-        # output_df = pd.DataFrame( inverse_parameters_list )
-        # output_df.to_csv( 'test.csv', index=False )
+        output_df = pd.DataFrame( inverse_parameters_list )
+        output_df.to_csv( 'test.csv', index=False )
+
+
+    def fetch_model_into_dataframe(self, dir_path ):
+        file_list = os.listdir( dir_path )
+        for f in file_list:
+            if f[-5:] != 'model':
+                file_list.remove( f )
+
+        parameters_list = []
+
+        file_list.sort()
+        for f in file_list:
+            parameters_dict = {}
+            p = os.path.join( os.path.abspath(dir_path), f )
+            date_time = pd.to_datetime( f.split('.')[0], format='%Y-%m-%d' )
+            parameters_dict['Date'] = date_time
+
+            with open( p, 'rb' ) as iii:
+                model = pickle.load( iii )
+                for index, value in enumerate( model.x ):
+                    parameters_dict[index] = round( value, 5 )
+
+            parameters_list.append( parameters_dict )
+
+        output_df = pd.DataFrame( parameters_list )
+        output_df.to_csv( 'test.csv', index=False )
+
+
+    def infer_expectation_rho(self, df, home, away , date_time ):
+        # df['Date'] = df['Date'].map( lambda s: pd.to_datetime(s, format='%Y-%m-%d') )
+        df_filtered = df.loc[ df['Date']<date_time, : ]
+
+        if len(df_filtered) == 0:
+            return None, None, None
+
+        home_index = self._team_index[home]
+        away_index = self._team_index[away]
+
+        model_line = df_filtered.loc[ len(df_filtered)-1, : ]
+
+        home_exp = np.exp( model_line[str(home_index)] + \
+                           model_line[str(away_index+self._team_num)] + \
+                           model_line[str( 2*self._team_num-1 + 2 )] )
+
+        away_exp = np.exp( model_line[str(away_index)] + \
+                           model_line[str(home_index+self._team_num)] )
+
+        return home_exp, away_exp, model_line[str( 2*self._team_num -1 + 1 )]
+
+
+    def over_under_bet_value_single_match(self,
+                                          home_exp,
+                                          away_exp,
+                                          rho,
+                                          over_odds,
+                                          under_odds ):
+        """
+        betValue = probability * odds,
+        if betValue > 1:
+            technically, it has value
+        else:
+            no value
+        Args:
+            home_exp:
+            away_exp:
+            rho:
+            over_odds: market over odds
+            under_odds: market under odds
+        """
+
+        if home_exp is None or away_exp is None or rho is None:
+            return 0,0
+
+        sup = home_exp - away_exp
+        ttg = home_exp + away_exp
+
+        doc = DynamicOddsCal( sup_ttg=[sup, ttg],
+                              present_socre=[0,0],
+                              adj_params=[1,rho] )
+
+        margin_dict = doc.over_under( line=2.5 )
+        over_margin, under_margin = margin_dict[selection_type.OVER],\
+                                    margin_dict[selection_type.UNDER]
+
+        return over_margin*over_odds, under_margin*under_odds
+
+
+    def backtesting_random_bet(self):
+        test_data = self._ds._df
+
+        def apply_fn( se ):
+            over_odds = se['BbAv>2.5']
+            under_odds = se['BbAv<2.5']
+            home_outcome = se['FTHG']
+            away_outcome = se['FTAG']
+
+            bet_dir = None
+            if np.random.rand() > 0.5:
+                # o = over
+                bet_dir = 0
+            else:
+                # 1 = under
+                bet_dir = 1
+
+            if home_outcome + away_outcome > 2.5:
+                if bet_dir==0:
+                    return over_odds -1
+                return -1
+
+            if bet_dir==0:
+                return -1
+
+            return under_odds -1
+
+        test_data['pnl'] = test_data.apply( apply_fn, axis=1 )
+        print( 'sum of pnl: ', test_data['pnl'].sum() )
+
+
+    def backtesting_bet_value(self, model_df ):
+        test_data = self._ds._df
+
+        def apply_fn( series ):
+            match_date_time = series['Date']
+            over_odds = series['BbAv>2.5']
+            under_odds = series['BbAv<2.5']
+            home_team = series['HomeTeam']
+            away_team = series['AwayTeam']
+            home_outcome = series['FTHG']
+            away_outcome = series['FTAG']
+
+            home_exp, away_exp, rho = self.infer_expectation_rho( model_df,
+                                                                  home_team,
+                                                                  away_team,
+                                                                  match_date_time )
+
+            over_betvalue, under_betvalue = self.over_under_bet_value_single_match( home_exp,
+                                                                                    away_exp,
+                                                                                    rho,
+                                                                                    over_odds,
+                                                                                    under_odds )
+
+            return over_betvalue, under_betvalue
+
+        x = test_data.apply( apply_fn, axis=1 )
+
+        test_data['over_bv'] = x.map( lambda s: s[0] )
+        test_data['under_bv'] = x.map( lambda s: s[1] )
+
+        def apply_fn2( se ):
+            # evenly bet on every match
+            over_odds = se['BbAv>2.5']
+            under_odds = se['BbAv<2.5']
+            home_outcome = se['FTHG']
+            away_outcome = se['FTAG']
+            over_bv = se['over_bv']
+            under_bv = se['under_bv']
+
+            if over_bv <=1.1 and under_bv <=1.1:
+                return 0
+            if over_bv > under_bv:
+                # bet on over 2.5
+                if home_outcome + away_outcome > 2.5:
+                    return over_odds -1
+
+                return -1
+
+            if home_outcome + away_outcome < 2.5:
+                return under_odds -1
+
+            return -1
+
+        test_data['pnl'] = test_data.apply( apply_fn2, axis=1 )
+        print( test_data['pnl'])
+        print( 'sum of pnl: ', test_data['pnl'].sum() )
+        a = test_data.loc[ test_data.pnl!= 0 , 'pnl' ]
+        print( a )
+
 
 
     def view_time_varying_model(self, df, view_list=[] ):
         fig, ax = plt.subplots()
 
-        ax.plot( df['Date'], np.exp( df['15']+df['36'] ) )
-        ax.plot( df['Date'], np.exp( df['0']+df['51'] ) )
+        # ax.plot( df['Date'], np.exp( df['19']+df['59'] ) )
+        # ax.plot( df['Date'], np.exp( df['23']+df['55'] ) )
+        # ax.plot( df['Date'], df['0'] )
+        # ax.plot( df['Date'], df['36'] )
+        # ax.plot( df['Date'], df['72'] )
+
+        for i in range(36):
+            ax.plot( df['Date'], np.exp( df[str(i)] + df[str(i+36)]) )
         plt.show()
     '''
     def save_model(self, fn):
@@ -1174,12 +1358,25 @@ if __name__ == "__main__":
     t1 = time.time()
     # dcm.inverse_decayed_model( y=2013, m=3, d=1, epsilon=0.0065, range=400 )
 
-    dcm.inverse_time_varying_model( dir_name='model_dir' ,
-                                    inverse_time_step=7 )
+    # dcm.inverse_time_varying_model( dir_name='model_dir' ,
+    #                                 inverse_time_step=7 )
+    # dcm.fetch_model_into_dataframe( 'model_dir' )
     # dcm.solve( options={'disp': True, 'maxiter': 100} )
     # dcm.solve()
 
-    # df = pd.read_csv( 'test.csv' )
+
+    df = pd.read_csv( 'test.csv' )
+    df['Date'] = df['Date'].map( lambda s: pd.to_datetime(s, format='%Y-%m-%d') )
+    dcm.backtesting_bet_value( df )
+    # dcm.backtesting_random_bet()
+    # home_exp, away_exp, rho = dcm.infer_expectation_rho( df,
+    #                                                      "Arsenal",
+    #                                                      "Chelsea",
+    #                                                      pd.Timestamp(2011,8,20) )
+    #
+    # print( home_exp )
+    # print( away_exp )
+    # print( rho )
     # dcm.view_time_varying_model( df )
 
     # dcm.load_model( 'ttt.model' )
