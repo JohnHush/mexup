@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from quantization.model.soccer.data import E0Data
+from quantization.soccer.soccer_dynamic_odds_cal import DynamicOddsCal
+from quantization.constants import *
 import matplotlib.pyplot as plt
 
 class Model(metaclass=ABCMeta):
@@ -246,7 +248,7 @@ class StaticDixonModel(Model):
         return self._model
 
     def save_model(self, fn=None ):
-        # save _model, _team_index, _team_num simutaneously
+        # save _model, _team_index, _team_num simultaneously
         if fn is None:
             return
 
@@ -336,8 +338,116 @@ class StaticDixonModel(Model):
                                       (df.FTAG - df.lambda2_market)).mean()
         return lambda1_market_error, lambda2_market_error
 
-    def back_testing(self, **kwargs):
-        pass
+
+    def back_testing_random_model(self,
+                                  train_or_test='train',
+                                  ratio = 0.2 ):
+
+        if train_or_test != 'train' and train_or_test != 'test':
+            raise Exception('specify train or test')
+
+        if train_or_test=='train':
+            df = pd.DataFrame( self._train_dict )
+        else:
+            df = pd.DataFrame( self._test_dict )
+
+        def apply_betValue_random(s, ratio=ratio):
+            over_odds = s['BbAv>2.5']
+            under_odds = s['BbAv<2.5']
+            home_outcome = s['FTHG']
+            away_outcome = s['FTAG']
+
+            if s['HomeTeam'] not in self._team_index.keys() or \
+                    s['AwayTeam'] not in self._team_index.keys():
+                return 0
+
+            is_bet  = np.random.rand() <= ratio
+            is_over = np.random.rand() >= 0.5
+
+            if not is_bet:
+                return 0
+
+            if is_over:
+                # bet on over 2.5
+                if home_outcome + away_outcome > 2.5:
+                    return over_odds-1
+                return -1
+
+            if home_outcome + away_outcome < 2.5:
+                return under_odds -1
+            return -1
+
+        df['pnl_random'] = df.apply( apply_betValue_random, axis=1 )
+        return df.pnl_random.sum() / len( df[df.pnl_random != 0 ])
+
+
+    def back_testing(self,
+                     train_or_test='train',
+                     lo=1.0,
+                     hi=100,
+                     output_df=None ):
+        """
+
+        Args:
+            train_or_test: backtesting Trainset or Testset
+            lo: the low limit when dismissing the bet
+            hi: the high limit
+            output_df: output filename
+
+        Returns:
+
+        """
+        if train_or_test != 'train' and train_or_test != 'test':
+            raise Exception('specify train or test')
+
+        if train_or_test=='train':
+            df = pd.DataFrame( self._train_dict )
+        else:
+            df = pd.DataFrame( self._test_dict )
+
+        def apply_betValue_model(s, lo, hi ):
+            over_odds = s['BbAv>2.5']
+            under_odds = s['BbAv<2.5']
+            home_outcome = s['FTHG']
+            away_outcome = s['FTAG']
+
+            try:
+                home_exp, away_exp, rho = self.forward( home=s['HomeTeam'], away=s['AwayTeam'] )
+            except:
+                return 0,0,0
+
+            doc = DynamicOddsCal(sup_ttg=[home_exp-away_exp, home_exp+away_exp],
+                                 present_socre=[0, 0],
+                                 adj_params=[1, rho])
+
+            d = doc.over_under(line=2.5)
+            over_bv  = d[selection_type.OVER] * over_odds
+            under_bv = d[selection_type.UNDER] * under_odds
+
+            if (over_bv <=lo or over_bv >= hi) and (under_bv <=lo or under_bv>= hi):
+                return over_bv, under_bv, 0
+
+            if over_bv > under_bv:
+                # bet on over 2.5
+                if home_outcome + away_outcome > 2.5:
+                    return over_bv, under_bv, over_odds -1
+                return over_bv, under_bv, -1
+
+            if home_outcome + away_outcome < 2.5:
+                return over_bv, under_bv, under_odds -1
+            return over_bv, under_bv, -1
+
+        tmp = df.apply( lambda x: apply_betValue_model(x, lo=lo, hi=hi), axis=1 )
+
+        df['over_bv_model'] = tmp.map( lambda s: s[0] )
+        df['under_bv_model'] = tmp.map( lambda s: s[1] )
+        df['pnl_model'] = tmp.map( lambda s: s[2] )
+
+        if output_df is not None:
+            df.to_csv( output_df, index=False)
+
+        return df
+
 
     def data_preprocessing(self, **kwargs ):
         '''
@@ -404,70 +514,31 @@ class StaticDixonModel(Model):
         self._test_dict = df_test.to_dict(orient='records')
 
 
-def plot_something():
-    data = E0Data()
-    data.from_csv( caches='../../data_e0_cache.csv')
-    sdm = StaticDixonModel()
-
-    time_start = pd.Timestamp( 2011, 7, 15 )
-    time_delta = pd.Timedelta( days=365 )
-
-    t = time_start
-
-    l1_model = []
-    l2_model = []
-    l1_market = []
-    l2_market = []
-    l1_nmm = []
-    l2_nmm = []
-
-    time_list = []
-    time_list.append( t )
-
-    for _ in range( 9 ):
-        sdm.data_preprocessing( data=data, split_time=t )
-        sdm.inverse()
-
-        l1, l2 = sdm._rmse_naive_mean_model( train_or_test='test' )
-        l1_nmm.append( l1 )
-        l2_nmm.append( l2 )
-
-        l1, l2 = sdm._rmse_model( train_or_test='test' )
-        l1_model.append( l1 )
-        l2_model.append( l2 )
-
-        l1, l2 = sdm._rmse_market( train_or_test='test' )
-        l1_market.append( l1 )
-        l2_market.append( l2 )
-
-        t = t + time_delta
-        time_list.append( t )
-
-    time_list.pop()
-
-    fig, ax = plt.subplots()
-    ax.plot( time_list, l1_nmm , label='naive mean model', marker='o', linestyle=':')
-    ax.plot( time_list, l1_market, label='bookie model' , marker='+', linestyle=':')
-    ax.plot( time_list, l1_model , label='Dixon model' , marker='*' , linestyle=':')
-
-    plt.xlabel( 'time' )
-    plt.ylabel( 'rmse' )
-
-    plt.legend( loc=2 )
-    plt.show()
-
 if __name__=='__main__':
-    data = E0Data()
-    data.from_csv( caches='../../data_e0_cache.csv')
+    import time
+    # t1 = time.time()
+    #
+    # data = E0Data()
+    # data.from_csv( caches='../../data_e0_cache.csv')
     # df = data.get_df()
     # print( df.head() )
 
-    plot_something()
+    # plot_something()
+    # plot_back_testing_result()
     # sdm = StaticDixonModel()
     # sdm.data_preprocessing( data=data , split_time=pd.Timestamp(2012, 2, 15 ))
     # sdm.inverse()
     # sdm.save_model( fn='tt.model' )
     # sdm.load_model( fn='tt.model' )
+
+    # print( sdm.back_testing( train_or_test='train',
+    #                   output_df='t.csv') )
+
+    # print( sdm.back_testing( train_or_test='test' ) )
+
+    # sdm.back_testing_random_model( train_or_test='test' , ratio=-1 )
+
+    # print( 'time = %f ' %( time.time() - t1 ) )
 
     # home_e, away_e, rho = sdm.forward( home='Arsenal', away='Chelsea' )
     # print( home_e )
