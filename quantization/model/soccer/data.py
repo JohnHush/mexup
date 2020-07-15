@@ -2,6 +2,118 @@ from abc import ABCMeta, abstractmethod
 import pandas as pd
 import numpy as np
 from quantization.soccer.soccer_inversion import *
+import mysql.connector
+from sqlalchemy import create_engine
+import os
+
+class SQL():
+
+    MYSQL_CONFIG = {
+        "host": "10.8.25.161",
+        "port": 3306,
+        "user": "root",
+        "password": "root123456",
+        "database": "DarkMatter",
+        "charset": "utf8",
+    }
+
+    @staticmethod
+    def save_csv():
+
+        def date_parser(s):
+            try:
+                r = pd.datetime.strptime(s, '%d/%m/%y')
+            except:
+                r = pd.datetime.strptime(s, "%d/%m/%Y")
+            else:
+                pass
+            return r
+
+        c = SQL.MYSQL_CONFIG
+        file_dir_path = '../../data'
+        file_list = os.listdir( file_dir_path )
+        cannot_pass_list = []
+        engine = create_engine( 'mysql+pymysql://%s:%s@%s:%s/%s' %(c['user'],
+                                                                   c['password'],
+                                                                   c['host'],
+                                                                   c['port'],
+                                                                   c['database']) )
+        conn = engine.connect()
+
+        for p in file_list:
+            if p.endswith('.csv'):
+                print(p)
+                df = pd.read_csv( os.path.join( file_dir_path, p ),
+                                  date_parser=date_parser,
+                                  infer_datetime_format=True,
+                                  parse_dates=['Date', ])
+
+                indb_list1 = ['Div', 'Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'HTHG', \
+                             'HTAG', 'HS', 'AS', 'HST', 'AST', 'HF', 'AF', 'HC', 'AC', 'HY', \
+                             'AY', 'HR', 'AR', 'B365H', 'B365D', 'B365A', 'BbAv>2.5', 'BbAv<2.5', \
+                             'BbAHh', 'BbAvAHH', 'BbAvAHA' ]
+
+                indb_list2 = ['Div', 'Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'HTHG', \
+                              'HTAG', 'HS', 'AS', 'HST', 'AST', 'HF', 'AF', 'HC', 'AC', 'HY', \
+                              'AY', 'HR', 'AR', 'B365H', 'B365D', 'B365A', 'Avg>2.5', \
+                              'Avg<2.5', 'AHh', 'AvgAHH', 'AvgAHA']
+
+                try:
+                    df = df[ indb_list1 ]
+                except Exception:
+                    df = df[ indb_list2 ]
+                    replace_dict = {}
+
+                    replace_dict['Avg>2.5'] = 'BbAv>2.5'
+                    replace_dict['Avg<2.5'] = 'BbAv<2.5'
+                    replace_dict['AHh'] = 'BbAHh'
+                    replace_dict['AvgAHH'] = 'BbAvAHH'
+                    replace_dict['AvgAHA'] = 'BbAvAHA'
+
+                    df = df.rename(columns=replace_dict, inplace=False)
+                except:
+                    cannot_pass_list.append( p )
+
+                df.to_sql( name='original_E0E1', con=conn, if_exists='append', index=False )
+
+
+    @staticmethod
+    def read_to_df():
+        c = SQL.MYSQL_CONFIG
+        engine = create_engine( 'mysql+pymysql://%s:%s@%s:%s/%s' %(c['user'],
+                                                                   c['password'],
+                                                                   c['host'],
+                                                                   c['port'],
+                                                                   c['database']) )
+        conn = engine.connect()
+
+        sql = 'SELECT * FROM original_E0E1'
+        df = pd.read_sql(sql, con=conn)
+        df.dropna(axis=0, inplace=True)
+
+        print( df.head() )
+        print( len(df) )
+
+        def _infer_market_sup_ttg_fn(series):
+            config = InferSoccerConfig()
+            config.ou_line = 2.5
+            config.ahc_line = series['BbAHh']
+            config.scores = [0, 0]
+            config.over_odds = series['BbAv>2.5']
+            config.under_odds = series['BbAv<2.5']
+            config.home_odds = series['BbAvAHH']
+            config.away_odds = series['BbAvAHA']
+
+            return infer_ttg_sup(config)
+
+        tmp = df.apply(_infer_market_sup_ttg_fn, axis=1)
+        df['sup_market'] = tmp.map(lambda s: round(s[0], 5))
+        df['ttg_market'] = tmp.map(lambda s: round(s[1], 5))
+
+        print( df.head() )
+
+        df.to_sql(name='E0E1', con=conn, if_exists='append', index=False)
+
 
 class Data( metaclass=ABCMeta ):
     '''
@@ -78,6 +190,23 @@ class E0Data(Data):
                                infer_datetime_format=True,
                                parse_dates=['Date', ])
 
+    def from_sql(self,
+                 user='root',
+                 passwd='root123456',
+                 host="10.8.25.161",
+                 port=3306,
+                 database='DarkMatter' ):
+        engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s' % ( user,
+                                                                    passwd,
+                                                                    host,
+                                                                    port,
+                                                                    database ))
+        conn = engine.connect()
+
+        sql = 'SELECT * FROM E0E1'
+        self._df = pd.read_sql(sql, con=conn)
+        self._df = self._df.sort_values(by='Date')
+
     def from_raw_data(self, **kwargs):
         raw_files = kwargs.pop( 'raw_files', None )
 
@@ -143,6 +272,8 @@ class E0Data(Data):
 if __name__=='__main__':
     data = E0Data()
     # data.from_csv( caches='../../data_e0_cache.csv')
+    data.from_sql()
+
     raw_files = [
         '../../1011_E0.csv',
         '../../1112_E0.csv',
@@ -155,7 +286,11 @@ if __name__=='__main__':
         '../../1819_E0.csv',
         '../../1920_E0.csv'
     ]
-    data.from_raw_data( raw_files=raw_files )
-    df = data.get_df()
-    print( df.head() )
+    # data.from_raw_data( raw_files=raw_files )
+    # df = data.get_df()
+    # print( df.head() )
+
+    # SQL.save_csv()
+    # SQL.read_to_df()
+
 

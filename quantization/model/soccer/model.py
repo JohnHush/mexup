@@ -10,6 +10,9 @@ from quantization.constants import *
 import matplotlib.pyplot as plt
 import time
 
+alpha___ = 1.5
+beta___ = 0.1
+
 class Model(metaclass=ABCMeta):
     '''
     model class
@@ -541,64 +544,37 @@ class DynamicDixonModel(Model):
             home_ind = team_index[d['HomeTeam']]
             away_ind = team_index[d['AwayTeam']]
 
-            ff = d['fading']
-
             home_exp = np.exp(params[home_ind] + params[away_ind + team_num] + params[-1])
             away_exp = np.exp(params[away_ind] + params[home_ind + team_num])
 
-            home_indices = [home_ind, away_ind + team_num]
-            away_indices = [away_ind, home_ind + team_num]
+            sample_grad1 = home_goal - home_exp
+            sample_grad2 = away_goal - away_exp
 
-            # accumulate derivative of L/alpha and L/beta of Home
+            rho = params[-2]
+
             if home_goal == 0 and away_goal == 0:
-                g[home_indices[0]] += ff * (home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
-                g[home_indices[1]] += ff * (home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
-
-                g[-1] += ff * (home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                               (1 - home_exp * away_exp * params[-2]))
-
+                keyC = (-home_exp* away_exp) / (1- home_exp* away_exp* rho)
+                sample_grad1 += keyC* rho
+                sample_grad2 += keyC* rho
             elif home_goal == 0 and away_goal == 1:
-                g[home_indices[0]] += ff * (home_goal - home_exp + (home_exp * params[-2]) / \
-                                            (1 + home_exp * params[-2]))
-                g[home_indices[1]] += ff * (home_goal - home_exp + (home_exp * params[-2]) / \
-                                            (1 + home_exp * params[-2]))
-
-                g[-1] += ff * (home_goal - home_exp + (home_exp * params[-2]) / \
-                               (1 + home_exp * params[-2]))
-            else:
-                g[home_indices[0]] += (home_goal - home_exp) * ff
-                g[home_indices[1]] += (home_goal - home_exp) * ff
-                g[-1] += (home_goal - home_exp) * ff
-
-            # accumulate another part
-            if home_goal == 0 and away_goal == 0:
-                g[away_indices[0]] += ff * (away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
-                g[away_indices[1]] += ff * (away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
+                keyC = home_exp / (1 + home_exp * rho)
+                sample_grad1 += keyC* rho
             elif home_goal == 1 and away_goal == 0:
-                g[away_indices[0]] += ff * (away_goal - away_exp + (away_exp * params[-2]) / \
-                                            (1 + away_exp * params[-2]))
-                g[away_indices[1]] += ff * (away_goal - away_exp + (away_exp * params[-2]) / \
-                                            (1 + away_exp * params[-2]))
-            else:
-                g[away_indices[0]] += ff * (away_goal - away_exp)
-                g[away_indices[1]] += ff * (away_goal - away_exp)
-
-            if home_goal == 0 and away_goal == 0:
-                g[-2] += ((-home_exp * away_exp) / (1 - home_exp * away_exp * params[-2])) * ff
-            elif home_goal == 0 and away_goal == 1:
-                g[-2] += (home_exp / (1 + home_exp * params[-2])) * ff
-            elif home_goal == 1 and away_goal == 0:
-                g[-2] += (away_exp / (1 + away_exp * params[-2])) * ff
+                keyC = away_exp / (1 + away_exp * rho)
+                sample_grad2 += keyC* rho
             elif home_goal == 1 and away_goal == 1:
-                g[-2] += (-1 / (1 - params[-2])) * ff
+                keyC = -1 / (1 - rho)
             else:
-                pass
+                keyC = 0
 
-        return -1. * g
+            g[-2] += keyC * d['fading']
+            g[-1] += sample_grad1 * d['fading']
+            g[home_ind] += sample_grad1 * d['fading']
+            g[away_ind + team_num] += sample_grad1 * d['fading']
+            g[away_ind] += sample_grad2 * d['fading']
+            g[home_ind + team_num] += sample_grad2 * d['fading']
+
+        return -g
 
     @staticmethod
     def _objective_values_sum(params, *args):
@@ -973,203 +949,224 @@ class DynamicDixonModelV2(Model):
     with other statistical infomation added
     '''
     def __init__(self):
-        self._team_index = None
-        self._team_num = None
-        self._df = None
-        self._df_dict = None
-        self._team_showname_list = None
-        self._model = None
+        pass
 
     def back_testing(self, **kwargs):
         pass
 
     @staticmethod
     def _grad(params, *args):
-        team_index = args[1]
-        team_num = args[2]
+        data = args[0]
+        team_num = args[1]
+        aux_num = args[2]
+        aux_weights = args[3]
 
-        g = np.zeros(len(params))
+        data_num = data.shape[0]
+        FTHG = data[:,0].astype(np.int16)
+        FTAG = data[:,1].astype(np.int16)
+        fading = data[:,2]
+        home_ind = data[:,3].astype(np.int16)
+        away_ind = data[:,4].astype(np.int16)
 
-        for d in args[0]:
-            home_goal = d['FTHG']
-            away_goal = d['FTAG']
+        home_attack = params[home_ind]
+        away_attack = params[away_ind]
+        home_defend = params[home_ind + team_num]
+        away_defend = params[away_ind + team_num]
+        rho = params[2*team_num]
+        home_adv = params[2*team_num + 1]
 
-            home_ind = team_index[d['HomeTeam']]
-            away_ind = team_index[d['AwayTeam']]
+        home_exp = np.exp( home_attack + away_defend + home_adv )
+        away_exp = np.exp( away_attack + home_defend )
 
-            ff = d['fading']
+        g_matrix = np.zeros( (data_num, len(params)) )
 
-            home_exp = np.exp(params[home_ind] + params[away_ind + team_num] + params[-1])
-            away_exp = np.exp(params[away_ind] + params[home_ind + team_num])
+        g_matrix[ np.arange(data_num), home_ind ] += ( FTHG - home_exp ) * fading
+        g_matrix[ np.arange(data_num), away_ind+team_num ] += ( FTHG - home_exp ) * fading
+        g_matrix[ np.arange(data_num), away_ind ] += ( FTAG - away_exp ) * fading
+        g_matrix[ np.arange(data_num), home_ind+team_num ] += ( FTAG - away_exp ) * fading
+        g_matrix[ np.arange(data_num), 2*team_num+1 ] += ( FTHG - home_exp ) * fading
 
-            home_indices = [home_ind, away_ind + team_num]
-            away_indices = [away_ind, home_ind + team_num]
+        # 0:0
+        ind = np.where((FTHG==0) & (FTAG==0))
+        g_matrix[ ind, home_ind[ind] ] += fading[ind] * (-home_exp[ind] * away_exp[ind] * rho ) /\
+                                     (1-home_exp[ind] * away_exp[ind] * rho)
+        g_matrix[ ind, away_ind[ind]+team_num] += fading[ind] * (-home_exp[ind] * away_exp[ind] * rho ) /\
+                                     (1-home_exp[ind] * away_exp[ind] * rho)
+        g_matrix[ ind, away_ind[ind] ] += fading[ind] * (-home_exp[ind] * away_exp[ind] * rho ) / \
+                                     (1-home_exp[ind] * away_exp[ind] * rho)
+        g_matrix[ ind, home_ind[ind]+team_num] += fading[ind] * (-home_exp[ind] * away_exp[ind] * rho ) / \
+                                             (1-home_exp[ind] * away_exp[ind] * rho)
+        g_matrix[ ind, 2*team_num+1 ] += fading[ind] * (-home_exp[ind] * away_exp[ind] * rho ) / \
+                                         (1 - home_exp[ind] * away_exp[ind] * rho)
+        g_matrix[ ind, 2*team_num ] += fading[ind] * (-home_exp[ind] *away_exp[ind])/ \
+                                       (1-home_exp[ind] *away_exp[ind] * rho)
 
-            # accumulate derivative of L/alpha and L/beta of Home
-            if home_goal == 0 and away_goal == 0:
-                g[home_indices[0]] += ff * (home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
-                g[home_indices[1]] += ff * (home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
+        # 0:1
+        ind = np.where((FTHG==0) & (FTAG==1))
+        g_matrix[ ind, home_ind[ind] ] += fading[ind] * ( home_exp[ind] * rho )/ (1+ home_exp[ind] * rho)
+        g_matrix[ ind, away_ind[ind]+team_num] += fading[ind] * ( home_exp[ind] * rho )/\
+                                             (1+ home_exp[ind] * rho)
+        g_matrix[ ind, 2*team_num+1 ] += fading[ind] * ( home_exp[ind] * rho )/\
+                                         (1+ home_exp[ind] * rho)
+        g_matrix[ind, 2 * team_num] += fading[ind] * home_exp[ind] / ( 1 + home_exp[ind] * rho)
 
-                g[-1] += ff * (home_goal - home_exp + (-home_exp * away_exp * params[-2]) / \
-                               (1 - home_exp * away_exp * params[-2]))
+        # 1:0
+        ind = np.where((FTHG==1) & (FTAG==0))
+        g_matrix[ ind, away_ind[ind] ] += fading[ind] * ( away_exp[ind] * rho )/ (1+ away_exp[ind] * rho)
+        g_matrix[ ind, home_ind[ind]+team_num ] += fading[ind] * ( away_exp[ind] * rho )/\
+                                              (1+ away_exp[ind] * rho)
+        g_matrix[ind, 2 * team_num] += fading[ind] * away_exp[ind] / ( 1 + away_exp[ind] * rho)
 
-            elif home_goal == 0 and away_goal == 1:
-                g[home_indices[0]] += ff * (home_goal - home_exp + (home_exp * params[-2]) / \
-                                            (1 + home_exp * params[-2]))
-                g[home_indices[1]] += ff * (home_goal - home_exp + (home_exp * params[-2]) / \
-                                            (1 + home_exp * params[-2]))
+        # 1:1
+        ind = np.where((FTHG == 1) & (FTAG == 1))
+        g_matrix[ind, 2 * team_num] += fading[ind] / ( rho -1 )
 
-                g[-1] += ff * (home_goal - home_exp + (home_exp * params[-2]) / \
-                               (1 + home_exp * params[-2]))
-            else:
-                g[home_indices[0]] += (home_goal - home_exp) * ff
-                g[home_indices[1]] += (home_goal - home_exp) * ff
-                g[-1] += (home_goal - home_exp) * ff
+        for index in range( aux_num ):
+            home_aux = data[:, 5 + index*2 ]
+            away_aux = data[:, 6 + index*2 ]
+            hsm = params[ 2 * team_num + 2 + 4*index ]
+            asm = params[ 2 * team_num + 2 + 4*index + 1 ]
+            hss = params[ 2 * team_num + 2 + 4*index + 2 ]
+            ass = params[ 2 * team_num + 2 + 4*index + 3 ]
+            home_aux_exp = np.exp( hsm + hss * (home_attack + away_defend) )
+            away_aux_exp = np.exp( asm + ass * (away_attack + home_defend) )
 
-            # accumulate another part
-            if home_goal == 0 and away_goal == 0:
-                g[away_indices[0]] += ff * (away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
-                g[away_indices[1]] += ff * (away_goal - away_exp + (-home_exp * away_exp * params[-2]) / \
-                                            (1 - home_exp * away_exp * params[-2]))
-            elif home_goal == 1 and away_goal == 0:
-                g[away_indices[0]] += ff * (away_goal - away_exp + (away_exp * params[-2]) / \
-                                            (1 + away_exp * params[-2]))
-                g[away_indices[1]] += ff * (away_goal - away_exp + (away_exp * params[-2]) / \
-                                            (1 + away_exp * params[-2]))
-            else:
-                g[away_indices[0]] += ff * (away_goal - away_exp)
-                g[away_indices[1]] += ff * (away_goal - away_exp)
+            g_matrix[ np.arange(data_num), home_ind ] += (home_aux - home_aux_exp) *\
+                                                         fading * aux_weights[index] * hss
+            g_matrix[ np.arange(data_num), away_ind+team_num ] += (home_aux - home_aux_exp) * \
+                                                                  fading * aux_weights[index] * hss
+            g_matrix[ np.arange(data_num), away_ind ] += (away_aux - away_aux_exp) * \
+                                                         fading * aux_weights[index] * ass
+            g_matrix[ np.arange(data_num), home_ind+team_num ] += (away_aux - away_aux_exp) * \
+                                                                  fading * aux_weights[index] * ass
 
-            if home_goal == 0 and away_goal == 0:
-                g[-2] += ((-home_exp * away_exp) / (1 - home_exp * away_exp * params[-2])) * ff
-            elif home_goal == 0 and away_goal == 1:
-                g[-2] += (home_exp / (1 + home_exp * params[-2])) * ff
-            elif home_goal == 1 and away_goal == 0:
-                g[-2] += (away_exp / (1 + away_exp * params[-2])) * ff
-            elif home_goal == 1 and away_goal == 1:
-                g[-2] += (-1 / (1 - params[-2])) * ff
-            else:
-                pass
+            g_matrix[ np.arange(data_num), 2*team_num+ 2+ 4*index] += ( home_aux - home_aux_exp) * \
+                                                                      fading * aux_weights[index]
+            g_matrix[ np.arange(data_num), 2*team_num+ 2+ 4*index+1] += ( away_aux - away_aux_exp) * \
+                                                                        fading * aux_weights[index]
+            g_matrix[ np.arange(data_num), 2*team_num+ 2+ 4*index+2] += ( home_aux - home_aux_exp) * \
+                                                                        fading * aux_weights[index] *\
+                                                                        (home_attack + away_defend)
+            g_matrix[ np.arange(data_num), 2*team_num+ 2+ 4*index+3] += ( away_aux - away_aux_exp) * \
+                                                                        fading * aux_weights[index] * \
+                                                                        (away_attack + home_defend)
 
-        return -1. * g
+        gggg = -g_matrix.sum( axis=0 )
+        gggg[ : team_num ] += 2 *alpha___ * params[ : team_num ]
+        gggg[ team_num: 2*team_num ] += 2 *beta___ * params[ team_num: 2*team_num ]
+
+        # return -g_matrix.sum( axis=0 )
+        return gggg
 
     @staticmethod
     def _objective_values_sum(params, *args):
-        team_index = args[1]
-        team_num = args[2]
-
-        obj = 0.
-        for d in args[0]:
-            home_goal = d['FTHG']
-            away_goal = d['FTAG']
-            home_outcome = d['HST']
-            away_outcome = d['AST']
-            fading_factor = d['fading']
-
-            home_ind = team_index[d['HomeTeam']]
-            away_ind = team_index[d['AwayTeam']]
-
-            # Dixon-coles model parameter
-            home_attack = params[home_ind]
-            away_attack = params[away_ind]
-            home_defend = params[home_ind + team_num ]
-            away_defend = params[away_ind + team_num ]
-            rho = params[ 2 * team_num ]
-            home_adv = params[ 2 * team_num + 1 ]
-
-            # auxiliary model parameter
-            hst_stat_mean = params[ 2 * team_num + 2 ]
-            ast_stat_mean = params[ 2 * team_num + 3 ]
-            hst_stat_scale= params[ 2 * team_num + 4 ]
-            ast_stat_scale= params[ 2 * team_num + 5 ]
-
-            home_exp = np.exp( home_attack + away_defend + home_adv )
-            away_exp = np.exp( away_attack + home_defend )
-
-            home_outcome_exp = np.exp( hst_stat_mean + hst_stat_scale * (home_attack + away_defend) )
-            away_outcome_exp = np.exp( ast_stat_mean + ast_stat_scale * (away_attack + home_defend) )
-
-            obj = obj - DynamicDixonModelV2._likelihood(home_goal,
-                                                        away_goal,
-                                                        home_exp,
-                                                        away_exp,
-                                                        rho) * fading_factor
-
-            obj = obj - DynamicDixonModelV2._likelihood_auxiliary_outcome(home_outcome,
-                                                                          away_outcome,
-                                                                          home_outcome_exp,
-                                                                          away_outcome_exp,
-                                                                          fading_factor,
-                                                                          0.2 )
-
-        return obj
-
-    @staticmethod
-    def _likelihood(home_goal,  # home goal in the match
-                    away_goal,  # away goal in the match
-                    home_exp,  # MLE param.
-                    away_exp,  # MLE param.
-                    rho):  # MLE param. calibration coefficient, degrades to Poisson Model when rho = 0
-
-        return np.log(DynamicDixonModelV2._calibration_matrix(home_goal, away_goal, home_exp, away_exp, rho) + \
-                      np.finfo(float).eps) + \
-               home_goal * np.log(home_exp + np.finfo(float).eps) - home_exp - \
-               away_exp + away_goal * np.log(away_exp + np.finfo(float).eps)
-
-    @staticmethod
-    def _likelihood_auxiliary_outcome( home_outcome,
-                                       away_outcome,
-                                       home_outcome_exp,
-                                       away_outcome_exp,
-                                       fading_factor,
-                                       outcome_weight ):
-        """
-
+        '''
+        the data will be stored in Numpy array in a form:
+            FTHG, FTAG, fading, home_ind, away_ind, HTHG, HTAG, HST, AST...
         Args:
-            home_outcome: e.g. Home Shot on Target
-            away_outcome:
-            home_outcome_exp: e.g. Expectation of Home Shot on Target
-            away_outcome_exp:
-            fading_factor: fading factor as the same as the one in the original likelihood
-            outcome_weight: overall weighting factor of auxiliary likelihood function
-        """
-
-        v = home_outcome * np.log(home_outcome_exp + np.finfo(float).eps) - home_outcome_exp - \
-            away_outcome_exp + away_outcome * np.log(away_outcome_exp + np.finfo(float).eps)
-
-        return v * fading_factor * outcome_weight
-
-    @staticmethod
-    def _calibration_matrix(home_goal,
-                            away_goal,
-                            home_exp,
-                            away_exp,
-                            rho):
-        """
-
-        Args:
-            home_goal:
-            away_goal:
-            home_exp:
-            away_exp:
-            rho:
+            params:
+            *args:
 
         Returns:
 
-        """
-        if home_goal == 0 and away_goal == 0:
-            return 1. - home_exp * away_exp * rho
-        elif home_goal == 0 and away_goal == 1:
-            return 1. + home_exp * rho
-        elif home_goal == 1 and away_goal == 0:
-            return 1. + away_exp * rho
-        elif home_goal == 1 and away_goal == 1:
-            return 1. - rho
+        '''
+        data = args[0]
+        team_num = args[1]
+        aux_num = args[2]
+        aux_weights = args[3]
+        use_cmp = args[4]
+        league_num = args[5]
+
+        obj = 0.
+        data_num = data.shape[0]
+
+        FTHG = data[:,0].astype(np.int16)
+        FTAG = data[:,1].astype(np.int16)
+        fading = data[:,2]
+        home_ind = data[:,3].astype(np.int16)
+        away_ind = data[:,4].astype(np.int16)
+
+        if use_cmp:
+            cmp_ind = data[: , 5 + 2*aux_num].astype(np.int16)
+
+            cmp_home_mean = params[ 2*team_num + 2 + 4*aux_num + cmp_ind ]
+            cmp_away_mean = params[ 2*team_num + 2 + 4*aux_num + league_num + cmp_ind ]
+
+            glb_home_mean = params[ 2*team_num + 2 + 4*aux_num + 2*league_num ]
+            glb_away_mean = params[ 2*team_num + 2 + 4*aux_num + 2*league_num + 1]
+
         else:
-            return 1.
+            cmp_home_mean = 0.
+            cmp_away_mean = 0.
+            glb_home_mean = 0.
+            glb_away_mean = 0.
+
+        home_attack = params[home_ind]
+        away_attack = params[away_ind]
+        home_defend = params[home_ind + team_num]
+        away_defend = params[away_ind + team_num]
+        rho = params[2*team_num]
+        home_adv = params[2*team_num + 1]
+
+        # home_exp = np.exp( home_attack + away_defend + home_adv )
+        # away_exp = np.exp( away_attack + home_defend )
+        home_exp = np.exp( glb_home_mean + cmp_home_mean + home_attack + away_defend + home_adv )
+        away_exp = np.exp( glb_away_mean + cmp_away_mean + away_attack + home_defend )
+
+        home_exp_global = np.exp( glb_home_mean + cmp_home_mean + home_adv )
+        away_exp_global = np.exp( glb_away_mean + cmp_away_mean )
+
+        dixon_coef = np.ones(data_num)
+        index1 = np.where( (FTHG==0) & (FTAG==0) )
+        index2 = np.where( (FTHG==0) & (FTAG==1) )
+        index3 = np.where( (FTHG==1) & (FTAG==0) )
+        index4 = np.where( (FTHG==1) & (FTAG==1) )
+
+        dixon_coef[index1] = 1. - home_exp[index1] * away_exp[index1] * rho
+        dixon_coef[index2] = 1. + home_exp[index2] * rho
+        dixon_coef[index3] = 1. + away_exp[index3] * rho
+        dixon_coef[index4] = 1. - rho
+
+        llh_main = np.log( dixon_coef + np.finfo(float).eps ) + \
+                   FTHG * np.log( home_exp + np.finfo(float).eps) - home_exp + \
+                   FTAG * np.log( away_exp + np.finfo(float).eps) - away_exp
+
+        llh_main = -llh_main * fading
+        obj = obj + llh_main.sum()
+
+        dixon_coef[index1] = 1. - home_exp_global[index1] * away_exp_global[index1] * rho
+        dixon_coef[index2] = 1. + home_exp_global[index2] * rho
+        dixon_coef[index3] = 1. + away_exp_global[index3] * rho
+        dixon_coef[index4] = 1. - rho
+
+        llh_global = np.log( dixon_coef + np.finfo(float).eps ) + \
+                     FTHG * np.log( home_exp_global + np.finfo(float).eps) - home_exp_global + \
+                     FTAG * np.log( away_exp_global + np.finfo(float).eps) - away_exp_global
+
+        llh_global = -llh_global * fading
+        obj = obj + llh_global.sum()
+
+        for index in range( aux_num ):
+            home_aux = data[:, 5 + index*2 ]
+            away_aux = data[:, 6 + index*2 ]
+            hsm = params[ 2 * team_num + 2 + 4*index ]
+            asm = params[ 2 * team_num + 2 + 4*index + 1 ]
+            hss = params[ 2 * team_num + 2 + 4*index + 2 ]
+            ass = params[ 2 * team_num + 2 + 4*index + 3 ]
+            home_aux_exp = np.exp( hsm + hss * (home_attack + away_defend) )
+            away_aux_exp = np.exp( asm + ass * (away_attack + home_defend) )
+
+            llh_aux = home_aux * np.log(home_aux_exp + np.finfo(float).eps) - home_aux_exp + \
+                      away_aux * np.log(away_aux_exp + np.finfo(float).eps) - away_aux_exp
+
+            llh_aux = -llh_aux * fading * aux_weights[index]
+            obj = obj + llh_aux.sum()
+
+        for index in range( team_num ):
+            obj += params[index] * params[index] * alpha___
+            obj += params[index+team_num] * params[index+team_num] * beta___
+
+        return obj
 
     def _fetch_data(self,
                     y=1989,
@@ -1212,6 +1209,8 @@ class DynamicDixonModelV2(Model):
                epsilon=0.0018571,
                duration=730,
                init_vals=None,
+               pre_teams=set(),
+               aux_weight=1.,
                **kwargs ):
 
         train_data = self._fetch_data( y=y,
@@ -1219,6 +1218,7 @@ class DynamicDixonModelV2(Model):
                                        d=d,
                                        epsilon=epsilon,
                                        duration=duration )
+
 
         train_dict = train_data.to_dict(orient='records')
         team2index = {}
@@ -1231,27 +1231,54 @@ class DynamicDixonModelV2(Model):
 
         team_num = len(team2index.keys())
 
-        np.random.seed( 0xCAFFE )
-
-        if init_vals is None:
+        if team_set == pre_teams:
+            init_vals = init_vals
+            # np.random.seed( 0xCAFFE )
+            # init_vals = np.concatenate((np.random.uniform(0, 1 , team_num),
+            #                             np.random.uniform(0, -1, team_num),
+            #                             [0.],
+            #                             [1.],
+            #                             [1.5,1.5,0.5,0.5] * self._aux_num))
+        else:
+            np.random.seed( 0xCAFFE )
             init_vals = np.concatenate((np.random.uniform(0, 1 , team_num),
                                         np.random.uniform(0, -1, team_num),
                                         [0.],
-                                        [1.]))
+                                        [1.],
+                                        [1.5,1.5,0.5,0.5] * self._aux_num,
+                                        [0.] * self._league_num *2,
+                                        [0., 0.]))
 
-        options = kwargs.pop('options', {'disp': True, 'maxiter': 100} )
+        options = kwargs.pop('options', {'disp': False, 'maxiter': 200} )
         constraints = kwargs.pop('constraints',
                                  [{'type': 'eq',
                                    'fun': lambda x: sum(x[:team_num]) - team_num}])
 
-        model = minimize( DynamicDixonModel._objective_values_sum,
+        if not isinstance( aux_weight, list ):
+            aux_weight = [aux_weight] * self._aux_num
+
+        # transfer train_dict into numpy array
+        train_data['home_ind'] = train_data['HomeTeam'].map( lambda s: team2index[s] )
+        train_data['away_ind'] = train_data['AwayTeam'].map( lambda s: team2index[s] )
+
+        col_list = [ 'FTHG', 'FTAG', 'fading', 'home_ind', 'away_ind' ]
+        for aux in self._aux_tar:
+            col_list.append( aux[0] )
+            col_list.append( aux[1] )
+
+        if self._use_cmp:
+            train_data['league_ind'] = train_data['Div'].map( lambda s: self._league_index[s] )
+            col_list.append( 'league_ind' )
+
+        np_data = train_data.loc[:, col_list].as_matrix()
+
+        model = minimize( DynamicDixonModelV2._objective_values_sum,
                           init_vals,
                           options=options,
                           constraints=constraints,
-                          jac=DynamicDixonModel._grad,
-                          args=(train_dict, team2index, team_num),
+                          # jac=DynamicDixonModelV2._grad,
+                          args=( np_data, team_num, self._aux_num, aux_weight, self._use_cmp, self._league_num),
                           **kwargs)
-
         return model, team2index, index2team, team_num
 
     def inverse(self,
@@ -1260,6 +1287,7 @@ class DynamicDixonModelV2(Model):
                 epsilon=0.0018571,
                 duration=730,
                 window_size=30,
+                aux_weight=1.,
                 display=True,
                 **kwargs ):
         df_time_start = self._df_dict[0]['Date']
@@ -1277,6 +1305,8 @@ class DynamicDixonModelV2(Model):
         split_time = start_time
 
         parameter_list = []
+        init_vals = None
+        pre_teams = set()
 
         while split_time < end_time:
             local_model, local_team2index, local_index2team, local_team_num = \
@@ -1285,14 +1315,18 @@ class DynamicDixonModelV2(Model):
                              d=split_time.day,
                              epsilon=epsilon,
                              duration=duration,
-                             init_vals=None,
+                             init_vals=init_vals,
+                             pre_teams=pre_teams,
+                             aux_weight=aux_weight,
                              **kwargs
                              )
 
+            init_vals = local_model.x
+            pre_teams = set(local_team2index.keys())
+
             # map the result to model in total
-            global_model_x = [np.nan] * ( 2 * self._team_num + 2 )
-            global_model_x[-1] = local_model.x[-1]
-            global_model_x[-2] = local_model.x[-2]
+            global_model_x = [np.nan] * ( 2 * self._team_num + 2  + 4 * self._aux_num )
+            global_model_x[ 2*self._team_num: ] = local_model.x[ 2* local_team_num : ]
 
             for index in range(local_team_num):
                 team = local_index2team[index]
@@ -1304,8 +1338,9 @@ class DynamicDixonModelV2(Model):
             parameter_list.append( global_model_x )
 
             if display:
-                print( global_model_x )
+                print( local_model.x )
                 print( split_time )
+                pass
 
             split_time += time_step
 
@@ -1359,8 +1394,8 @@ class DynamicDixonModelV2(Model):
         away_attack = filtered_df.iloc[-1, away_index]
         home_defend = filtered_df.iloc[-1, home_index + self._team_num]
         away_defend = filtered_df.iloc[-1, away_index + self._team_num]
-        rho = filtered_df.iloc[-1, -2]
-        home_adv = filtered_df.iloc[-1, -1]
+        rho = filtered_df.iloc[-1, 2* self._team_num +1 ]
+        home_adv = filtered_df.iloc[-1, 2* self._team_num +2]
 
         home_exp = np.exp( home_attack + away_defend + home_adv )
         away_exp = np.exp( away_attack + home_defend )
@@ -1378,19 +1413,27 @@ class DynamicDixonModelV2(Model):
                 return 0, 0, 0
 
         df = self._df
+        # df = df[ df.Div=='E1' ]
+
+        # print( df.head() )
 
         tmp = df.apply( apply_fn, axis=1 )
-        df['lambda1_model'] = tmp.map(lambda s: round(s[0], 5))
-        df['lambda2_model'] = tmp.map(lambda s: round(s[1], 5))
+        lambda1_model = tmp.map(lambda s: round(s[0], 5))
+        lambda2_model = tmp.map(lambda s: round(s[1], 5))
 
-        df = df[ (df.lambda1_model != 0 ) & (df.lambda2_model != 0 ) ]
+        df = df[ (lambda1_model != 0 ) & (lambda2_model != 0 ) ]
 
-        lambda1_model_error = np.sqrt((df.FTHG - df.lambda1_model) * \
-                                      (df.FTHG - df.lambda1_model)).mean()
-        lambda2_model_error = np.sqrt((df.FTAG - df.lambda2_model) * \
-                                      (df.FTAG - df.lambda2_model)).mean()
+        # print( df.head() )
 
-        return lambda1_model_error, lambda2_model_error
+        # b = self._df.iloc[df.index.tolist(), :]
+        # print( b.head() )
+
+        lambda1_model_error = np.sqrt((df.FTHG - lambda1_model) * \
+                                      (df.FTHG - lambda1_model)).mean()
+        lambda2_model_error = np.sqrt((df.FTAG - lambda2_model) * \
+                                      (df.FTAG - lambda2_model)).mean()
+
+        return lambda1_model_error, lambda2_model_error, df.index.tolist()
 
     def _rmse_naive_mean_model(self):
         '''
@@ -1398,36 +1441,46 @@ class DynamicDixonModelV2(Model):
         '''
 
         df = self._df
+        # df = df[ df.Div=='E1' ]
 
-        df['lambda1_nmm'] = df.FTHG.mean()
-        df['lambda2_nmm'] = df.FTAG.mean()
+        lambda1_nmm = df.FTHG.mean()
+        lambda2_nmm = df.FTAG.mean()
 
-        lambda1_nmm_error = np.sqrt((df.FTHG - df.lambda1_nmm) * \
-                                    (df.FTHG - df.lambda1_nmm)).mean()
-        lambda2_nmm_error = np.sqrt((df.FTAG - df.lambda2_nmm) * \
-                                    (df.FTAG - df.lambda2_nmm)).mean()
+        lambda1_nmm_error = np.sqrt((df.FTHG - lambda1_nmm) * \
+                                    (df.FTHG - lambda1_nmm)).mean()
+        lambda2_nmm_error = np.sqrt((df.FTAG - lambda2_nmm) * \
+                                    (df.FTAG - lambda2_nmm)).mean()
 
         return lambda1_nmm_error, lambda2_nmm_error
 
-    def _rmse_market(self):
+    def _rmse_market(self, pick_list=None ):
         '''
         compute the RMSE of the market
         '''
 
-        df = self._df
+        dff = self._df
+        # dff = dff[ dff.Div=='E1' ]
 
-        df['lambda1_market'] = (df.sup_market + df.ttg_market) / 2
-        df['lambda2_market'] = (-df.sup_market + df.ttg_market) / 2
+        if pick_list is not None:
+            # df = df.sort_values(by='Date'):
+            df = dff.iloc[pick_list, :]
+        # df = dff
 
-        df = df[ (df.lambda1_market != 0 ) & (df.lambda2_market != 0 ) ]
+        lambda1_market = (df.sup_market + df.ttg_market) / 2
+        lambda2_market = (-df.sup_market + df.ttg_market) / 2
 
-        lambda1_market_error = np.sqrt((df.FTHG - df.lambda1_market) * \
-                                       (df.FTHG - df.lambda1_market)).mean()
-        lambda2_market_error = np.sqrt((df.FTAG - df.lambda2_market) * \
-                                       (df.FTAG - df.lambda2_market)).mean()
+        # df = df[ (df.lambda1_market != 0 ) & (df.lambda2_market != 0 ) ]
+
+        lambda1_market_error = np.sqrt((df.FTHG - lambda1_market) * \
+                                       (df.FTHG - lambda1_market)).mean()
+        lambda2_market_error = np.sqrt((df.FTAG - lambda2_market) * \
+                                       (df.FTAG - lambda2_market)).mean()
         return lambda1_market_error, lambda2_market_error
 
-    def data_preprocessing(self, **kwargs ):
+    def data_preprocessing(self,
+                           use_cmp=True,
+                           aux_tar=[],
+                           **kwargs ):
         '''
         Args:
             **kwargs:
@@ -1442,12 +1495,44 @@ class DynamicDixonModelV2(Model):
 
         df = data.get_df()
 
+        # analyze team information
         team2index = {}
         team_set = set( df['HomeTeam'] ) | set( df['AwayTeam'] )
         team_list = sorted(list(team_set))
+        team_num = len(team_list)
 
         for index, value in enumerate(team_list):
             team2index[value] = index
+
+        # rho and home_adv
+        dep_num = 2
+
+        # analyze auxiliary targets
+        aux_num = len( aux_tar )
+
+        # analyze league information
+        league_set = set( df['Div'] )
+        league_list = sorted(list(league_set))
+        league_num = len(league_list)
+        league2index = {}
+
+        for index, value in enumerate(league_list):
+            league2index[value] = index
+
+        self._use_cmp = use_cmp
+        self._aux_tar = aux_tar
+        self._team_num = team_num
+        self._dep_num = dep_num
+        self._aux_num = aux_num
+        self._league_num = league_num
+        self._team_index = team2index
+        self._league_index = league2index
+        self._df_dict = df.to_dict( orient='records' )
+        self._df = df
+        self._model = None
+
+        if self._league_num == 1:
+            self._use_cmp = False
 
         team_showname_list = []
         team_showname_list.append( 'Date')
@@ -1460,34 +1545,57 @@ class DynamicDixonModelV2(Model):
         team_showname_list.append( 'rho' )
         team_showname_list.append( 'home_adv' )
 
-        self._team_showname_list = team_showname_list
-        self._team_num = len(team2index.keys())
-        self._team_index = team2index
-        self._df_dict = df.to_dict( orient='records' )
-        self._df = df
+        for index in range(self._aux_num):
+            pre_str = 'stat' + str(index) + '_'
+            team_showname_list.append( pre_str + 'home_mean' )
+            team_showname_list.append( pre_str + 'away_mean' )
+            team_showname_list.append( pre_str + 'home_scale' )
+            team_showname_list.append( pre_str + 'away_scale' )
 
-        # for k,v in team2index.items():
-        #     print( k, v )
+        if self._use_cmp:
+            for index in range(self._league_num):
+                pre_str = 'league' + str(index) + '_'
+                team_showname_list.append( pre_str + 'home_mean')
+
+            for index in range(self._league_num):
+                pre_str = 'league' + str(index) + '_'
+                team_showname_list.append( pre_str + 'away_mean')
+
+            team_showname_list.append( 'global_home_mean')
+            team_showname_list.append( 'global_away_mean')
+
+        self._team_showname_list = team_showname_list
 
 
 if __name__=='__main__':
     import time
+    import sys
 
     data = E0Data()
-    data.from_csv( caches='../../data_e0_cache.csv' )
+    # data.from_csv( caches='../../data_e0_cache.csv' )
+    data.from_sql()
 
-    ddm = DynamicDixonModel()
-    ddm.data_preprocessing( data=data )
+    # ddm = DynamicDixonModelV2( aux_tar=[ ['HST', 'AST'], ['HTHG', 'HTAG']])
+    ddm = DynamicDixonModelV2()
+    ddm.data_preprocessing( data=data,
+                            aux_tar=[['HST', 'AST'],] )
 
-    ddm.inverse( window_size=30 )
-    # ddm.save_model( fn='ddm.model', df_name='ddm.csv' )
+    ddm.inverse( window_size=10,
+                 epsilon=0.0018571,
+                 duration=930,
+                 aux_weight=1. )
+    # ddm.save_model( fn='ddmV2.model', df_name='ddmV2.csv' )
 
-    # ddm.load_model( fn='ddm.model' )
+    # ddm.load_model( fn='ddmV2.model' )
 
     # ddm.forward( home='Chelsea', away='Middlesbrough', match_time=pd.Timestamp( 2019, 3 , 29 ) )
+
+    l1e, l2e, pick_list = ddm._rmse_model()
+
     # print( ddm._rmse_model() )
-    # print( ddm._rmse_naive_mean_model())
-    # print( ddm._rmse_market() )
+    print( l1e, l2e )
+    print( ddm._rmse_naive_mean_model())
+    print( ddm._rmse_market( pick_list=pick_list) )
     #
     # ddm.forward( home='Sheffield United', away='QPR' )
 
