@@ -205,7 +205,9 @@ class E0Data(Data):
 
         sql = 'SELECT * FROM E0E1'
         self._df = pd.read_sql(sql, con=conn)
+
         self._df = self._df.sort_values(by='Date')
+        self._df = self._df.set_index( np.arange(len(self._df)) )
 
     def from_raw_data(self, **kwargs):
         raw_files = kwargs.pop( 'raw_files', None )
